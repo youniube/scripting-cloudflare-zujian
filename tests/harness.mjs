@@ -26,6 +26,7 @@ export function createRuntime(options = {}) {
   const state = {
     now: options.now ?? BASE_TIME, storage: options.storage ?? new Map(), keychain: options.keychain ?? new Map(),
     calls: [], storageFail: false, keychainFail: false, performFetch: options.fetch ?? (async () => response(analytics())), presented: null,
+    hooks: [...(options.initialHooks ?? [])], effects: [], presentations: [], dialogs: [], exitCount: 0, entryPromise: null,
   }
   class ClockDate extends Date {
     constructor(...args) { super(...(args.length ? args : [state.now])) }
@@ -36,12 +37,27 @@ export function createRuntime(options = {}) {
   for (const name of ["Text", "VStack", "HStack", "Spacer", "Divider", "RoundedRectangle", "ProgressView", "DateLabel", "Chart", "BarChart", "NavigationStack", "List", "Section", "Button", "Picker", "TextField", "SecureField", "Toggle"]) {
     native[name] = Object.assign(props => ({ type: name, props }), { native: true })
   }
+  let hookIndex = 0
   Object.assign(native, {
     fetch: async (url, init) => { state.calls.push({ url, init }); return state.performFetch(url, init) },
     Widget: { family: options.family ?? "systemMedium", parameter: "", displaySize: { width: 360, height: 170 }, present: (element, policy) => { state.presented = { element, policy } }, reloadAll: () => {}, preview: async () => {} },
+    // Only model JavaScript's initial render, not SwiftUI layout or iOS presentation.
+    useState: initial => {
+      const index = hookIndex++
+      if (!Object.hasOwn(state.hooks, index)) state.hooks[index] = typeof initial === "function" ? initial() : initial
+      return [state.hooks[index], value => { state.hooks[index] = typeof value === "function" ? value(state.hooks[index]) : value }]
+    },
+    useEffect: effect => { state.effects.push(effect) },
+    Navigation: {
+      useDismiss: () => () => {},
+      present: async options => { state.presented = options; state.presentations.push(options) },
+    },
+    Dialog: { alert: async options => { state.dialogs.push(options) }, confirm: async () => false },
+    Script: { exit: () => { state.exitCount++ } },
   })
   const context = vm.createContext({
     Date: ClockDate,
+    captureEntry: promise => { state.entryPromise = promise },
     Storage: {
       get: key => state.storage.has(key) ? clone(state.storage.get(key)) : null,
       set: (key, value) => { if (state.storageFail) return false; state.storage.set(key, clone(value)); return true },
@@ -63,7 +79,12 @@ export function createRuntime(options = {}) {
     if (file === "scripting") return native
     const absolute = path.resolve(scriptRoot, file.endsWith(".ts") || file.endsWith(".tsx") ? file : file + (fs.existsSync(path.join(scriptRoot, file + ".ts")) ? ".ts" : ".tsx"))
     if (modules.has(absolute)) return modules.get(absolute).exports
-    const source = fs.readFileSync(absolute, "utf8")
+    let source = fs.readFileSync(absolute, "utf8")
+    if (options.captureEntry && path.basename(absolute) === "index.tsx") {
+      // Capture the same startup call so a render exception becomes an awaited test failure.
+      if (!/^void run\(\)\s*$/m.test(source)) throw new Error("App startup call was not found")
+      source = source.replace(/^void run\(\)\s*$/m, "captureEntry(run())")
+    }
     const output = ts.transpileModule(source, { fileName: absolute, compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, jsxFactory: "createElement" } }).outputText
     const module = { exports: {} }
     modules.set(absolute, module)

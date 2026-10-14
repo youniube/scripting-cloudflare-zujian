@@ -114,7 +114,8 @@ function MainView() {
       Widget.reloadAll()
     } catch (error) { void Dialog.alert({ title: "切换失败", message: failureFrom(error).message }) }
   }
-  const currentView = view?.account.id === account?.id && view.period === period ? view : null
+  // 首次运行时两个 ID 都可能是 undefined，必须先确认数据和账号存在。
+  const currentView = view && account && view.account.id === account.id && view.period === period ? view : null
   const days = currentView?.days ?? []
   const ranked = rankWorkers(days)
   const total = totalRequests(days)

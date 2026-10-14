@@ -1,7 +1,8 @@
 {
   "archive": "cloudflare-workers-meter.zip",
-  "bytes": 32653,
-  "sha256": "a456ae4b916183b230393b3ede16a8935b8d0f99bdd9f7d1dc0c2d157aa39fa6",
+  "version": "1.0.1",
+  "bytes": 32878,
+  "sha256": "f7eaf6a3d598486cbbc748d45f54a7d33f63f415fe2463d7545750862f55128b",
   "files": [
     "script.json",
     "index.tsx",

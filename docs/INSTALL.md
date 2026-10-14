@@ -2,6 +2,8 @@
 
 **[安装 Cloudflare Workers Meter 到 Scripting](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2Fyouniube%2Fscripting-cloudflare-zujian%2Fmain%2Freleases%2Fcloudflare-workers-meter.zip%22%5D)**
 
+当前版本 **1.0.1** 已修复尚未配置账号时的首次启动异常。运行后应看到“Workers 额度”“开始监控”和“添加账号”。旧版本出现空白时，先更新原脚本，再重新运行；保留原脚本的配置与凭据作用域。
+
 1. 在 iPhone 安装并打开 Scripting。
 2. 用 Safari 打开上面的安装链接。在官方分享页点击打开 Scripting，并确认导入。
 3. 运行 `Cloudflare Workers Meter`，点击“添加账号”。

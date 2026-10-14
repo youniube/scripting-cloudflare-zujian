@@ -33,7 +33,7 @@ def package():
         assert not any("node_modules" in name or "tests/" in name for name in bundle.namelist())
     checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
     (output / "SHA256SUMS.txt").write_text(checksum + "  " + archive.name + "\n", encoding="utf-8")
-    manifest = {"archive": archive.name, "bytes": archive.stat().st_size, "sha256": checksum, "files": list(FILES), "verified": "ZIP CRC, exact source contents, allowlisted files"}
+    manifest = {"archive": archive.name, "version": metadata["version"], "bytes": archive.stat().st_size, "sha256": checksum, "files": list(FILES), "verified": "ZIP CRC, exact source contents, allowlisted files"}
     (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     # GitHub 固定下载路径：只复制已经通过白名单和源码一致性检查的安装包。
     releases = ROOT / "releases"
