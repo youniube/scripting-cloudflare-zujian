@@ -1,7 +1,7 @@
 {
   "archive": "cloudflare-workers-meter.zip",
-  "bytes": 32644,
-  "sha256": "cab3e9e06adb59847458e15430782a503e71f7c1b4ebd3cd233b56736ab782f1",
+  "bytes": 32653,
+  "sha256": "a456ae4b916183b230393b3ede16a8935b8d0f99bdd9f7d1dc0c2d157aa39fa6",
   "files": [
     "script.json",
     "index.tsx",
@@ -14,5 +14,5 @@
     "README.md"
   ],
   "verified": "ZIP CRC, exact source contents, allowlisted files",
-  "remoteSource": "https://raw.githubusercontent.com/youniube/scripting-cloudflare-workers-meter/main/releases/cloudflare-workers-meter.zip"
+  "remoteSource": "https://raw.githubusercontent.com/youniube/scripting-cloudflare-zujian/main/releases/cloudflare-workers-meter.zip"
 }

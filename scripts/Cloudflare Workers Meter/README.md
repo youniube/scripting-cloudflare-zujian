@@ -6,19 +6,19 @@
 
 ## iPhone 远程安装
 
-**[点击安装到 Scripting](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2Fyouniube%2Fscripting-cloudflare-workers-meter%2Fmain%2Freleases%2Fcloudflare-workers-meter.zip%22%5D)**
+**[点击安装到 Scripting](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2Fyouniube%2Fscripting-cloudflare-zujian%2Fmain%2Freleases%2Fcloudflare-workers-meter.zip%22%5D)**
 
 用 iPhone 的 Safari 打开上面的链接，在官方分享页点击“在 Scripting 中打开”并确认导入。安装后运行脚本，添加 Cloudflare 只读账号，再添加中号 Scripting 桌面小组件。手机无需下载整个 GitHub 仓库或运行桌面命令。
 
 如果安装页没有自动打开 App，可以复制以下远程 ZIP 地址，粘贴到 Scripting 的远程导入入口或 [官方链接生成页](https://www.scripting.fun/import_scripts/)：
 
 ```text
-https://raw.githubusercontent.com/youniube/scripting-cloudflare-workers-meter/main/releases/cloudflare-workers-meter.zip
+https://raw.githubusercontent.com/youniube/scripting-cloudflare-zujian/main/releases/cloudflare-workers-meter.zip
 ```
 
-也提供 [从 GitHub 项目目录导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fgithub.com%2Fyouniube%2Fscripting-cloudflare-workers-meter%2Ftree%2Fmain%2Fscripts%2FCloudflare%2520Workers%2520Meter%22%5D)。仓库地址：[youniube/scripting-cloudflare-workers-meter](https://github.com/youniube/scripting-cloudflare-workers-meter)。包内只含脚本源码与教程，Cloudflare Account ID、API Token 和统计缓存需要在本机配置。
+也提供 [从 GitHub 项目目录导入](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fgithub.com%2Fyouniube%2Fscripting-cloudflare-zujian%2Ftree%2Fmain%2Fscripts%2FCloudflare%2520Workers%2520Meter%22%5D)。仓库地址：[youniube/scripting-cloudflare-zujian](https://github.com/youniube/scripting-cloudflare-zujian)。包内只含脚本源码与教程，Cloudflare Account ID、API Token 和统计缓存需要在本机配置。
 
-`script.json` 已设置 `remoteResource.url`，指向固定安装包地址；没有配置自动更新间隔。以后可以从同一个入口导入新版，保留原脚本并选择更新，避免创建另一个凭据作用域。原生导入和更新行为仍需在 iPhone 上确认。详细手机步骤见 [远程安装教程](https://github.com/youniube/scripting-cloudflare-workers-meter/blob/main/docs/INSTALL.md)。
+`script.json` 已设置 `remoteResource.url`，指向固定安装包地址；没有配置自动更新间隔。以后可以从同一个入口导入新版，保留原脚本并选择更新，避免创建另一个凭据作用域。原生导入和更新行为仍需在 iPhone 上确认。详细手机步骤见 [远程安装教程](https://github.com/youniube/scripting-cloudflare-zujian/blob/main/docs/INSTALL.md)。
 
 ## 交付目录
 

@@ -1,6 +1,6 @@
 # iPhone 远程安装
 
-**[安装 Cloudflare Workers Meter 到 Scripting](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2Fyouniube%2Fscripting-cloudflare-workers-meter%2Fmain%2Freleases%2Fcloudflare-workers-meter.zip%22%5D)**
+**[安装 Cloudflare Workers Meter 到 Scripting](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2Fyouniube%2Fscripting-cloudflare-zujian%2Fmain%2Freleases%2Fcloudflare-workers-meter.zip%22%5D)**
 
 1. 在 iPhone 安装并打开 Scripting。
 2. 用 Safari 打开上面的安装链接。在官方分享页点击打开 Scripting，并确认导入。
@@ -15,16 +15,16 @@
 远程 ZIP：
 
 ```text
-https://raw.githubusercontent.com/youniube/scripting-cloudflare-workers-meter/main/releases/cloudflare-workers-meter.zip
+https://raw.githubusercontent.com/youniube/scripting-cloudflare-zujian/main/releases/cloudflare-workers-meter.zip
 ```
 
 GitHub 项目目录：
 
 ```text
-https://github.com/youniube/scripting-cloudflare-workers-meter/tree/main/scripts/Cloudflare%20Workers%20Meter
+https://github.com/youniube/scripting-cloudflare-zujian/tree/main/scripts/Cloudflare%20Workers%20Meter
 ```
 
-如果浏览器没有唤起 App，将远程 ZIP 地址粘贴到 [官方导入链接生成页](https://www.scripting.fun/import_scripts/)，生成链接后在 iPhone 上打开。也可以使用 [项目目录导入链接](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fgithub.com%2Fyouniube%2Fscripting-cloudflare-workers-meter%2Ftree%2Fmain%2Fscripts%2FCloudflare%2520Workers%2520Meter%22%5D)。
+如果浏览器没有唤起 App，将远程 ZIP 地址粘贴到 [官方导入链接生成页](https://www.scripting.fun/import_scripts/)，生成链接后在 iPhone 上打开。也可以使用 [项目目录导入链接](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fgithub.com%2Fyouniube%2Fscripting-cloudflare-zujian%2Ftree%2Fmain%2Fscripts%2FCloudflare%2520Workers%2520Meter%22%5D)。
 
 ## 使用与更新
 
