@@ -1,0 +1,14 @@
+{
+  "name": "cloudflare-workers-meter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scripting for iOS Cloudflare Workers 额度监控；开发工具仅在桌面运行",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node --test tests/*.test.mjs",
+    "package": "python tools/package_project.py"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

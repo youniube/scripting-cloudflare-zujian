@@ -1,0 +1,7 @@
+{
+  "editor": "none",
+  "autoOpen": false,
+  "generateTsConfig": false,
+  "port": 3000,
+  "logLevel": "info"
+}
