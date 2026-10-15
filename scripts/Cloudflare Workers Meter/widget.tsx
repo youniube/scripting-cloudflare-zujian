@@ -20,8 +20,7 @@ async function run() {
     // 大号 Widget 的历史错误同样在底部显示；今日始终使用独立日期缓存。
     today.failures = view.failures
     const dates = periodDates("7d")
-    const chartHeight = Math.max(24, Math.min(40, Widget.displaySize.height * 0.095))
-    Widget.present(<WidgetView view={today} family={Widget.family} dates={dates} history={view.days} chartHeight={chartHeight} />, {
+    Widget.present(<WidgetView view={today} family={Widget.family} dates={dates} history={view.days} displaySize={Widget.displaySize} />, {
       policy: "after", date: suggestedReload(Date.now(), view.failures[0]),
     })
     // Widget.present 会销毁执行上下文，数据/缓存必须在它之前处理。

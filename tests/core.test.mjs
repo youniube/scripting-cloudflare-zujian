@@ -54,3 +54,16 @@ test("空数据与确切零请求保持区分", () => {
   assert.equal(formatNumber(100_000), "100,000")
   assert.equal(fraction(0, 0), "—")
 })
+
+test("很小的正百分比不会被四舍五入成零，阈值与超额比例保持原显示", () => {
+  const { percent } = createRuntime().load("core")
+  assert.equal(percent(2 / 100_000), "0.002%")
+  assert.equal(percent(1 / 100_000), "0.001%")
+  assert.equal(percent(1 / 1_000_000), "<0.001%")
+  assert.equal(percent(0), "0.0%")
+  assert.equal(percent(0.8), "80.0%")
+  assert.equal(percent(0.95), "95.0%")
+  assert.equal(percent(1.2), "120.0%")
+  assert.equal(percent(null), "—")
+  assert.equal(percent(NaN), "—")
+})

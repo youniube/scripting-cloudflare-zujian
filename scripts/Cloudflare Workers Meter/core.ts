@@ -155,7 +155,11 @@ export function compactNumber(value: number | null | undefined): string {
   return formatNumber(value)
 }
 export function percent(ratio: number | null): string {
-  return ratio === null ? "—" : (ratio * 100).toFixed(1) + "%"
+  if (ratio === null || !Number.isFinite(ratio)) return "—"
+  const value = ratio * 100
+  // 少量真实调用不能因为保留一位小数而变成 0.0%。
+  if (value > 0 && value < 0.1) return value < 0.001 ? "<0.001%" : value.toFixed(3) + "%"
+  return value.toFixed(1) + "%"
 }
 export function fraction(numerator: number, denominator: number | null): string {
   return denominator === null || denominator <= 0 ? "—" : percent(numerator / denominator)

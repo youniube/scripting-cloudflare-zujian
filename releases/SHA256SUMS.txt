@@ -1,1 +1,1 @@
-f7eaf6a3d598486cbbc748d45f54a7d33f63f415fe2463d7545750862f55128b  cloudflare-workers-meter.zip
+8142ac8967bfd21462d17aa8090d6737c51ebeb113ed3a0abdccf200beed53b4  cloudflare-workers-meter.zip

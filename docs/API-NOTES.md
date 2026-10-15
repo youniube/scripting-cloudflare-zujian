@@ -51,6 +51,8 @@ GraphQL 查询使用 JSON 编码后的内联字符串值，避免猜测教程间
 
 ## 可见限制
 
+1.0.2 的布局及配色额外核对了 [padding](https://scriptingapp.github.io/guide/View%20Modifiers/padding)、[frame](https://scriptingapp.github.io/guide/View%20Modifiers/frame)、[DynamicShapeStyle](https://scriptingapp.github.io/guide/Types/DynamicShapeStyle) 和 [widgetBackground](https://scriptingapp.github.io/guide/View%20Modifiers/widgetBackground)。动态颜色由原生环境选择 `light` / `dark`，没有使用设备当前主题的单次快照，也没有通过 `preferredColorScheme` 固定外观。`Widget.displaySize` 的点数语义以 Widget API 为准。
+
 - 没有真实 Token，当前运行没有完成在线账号数据验证；首次手机配置时会在线验证 Schema 与账号能力。
 - 没有连接 iPhone，完整官方声明、Keychain Widget 访问、原生控件、尺寸布局和刷新策略需要真机确认。
 - iOS 着色模式可能统一颜色，80%/95% 另有文字阈值。Widget 内无 hooks 状态、无图片、无浏览器 DOM。
