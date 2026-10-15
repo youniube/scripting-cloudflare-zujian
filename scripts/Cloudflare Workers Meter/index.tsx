@@ -155,7 +155,7 @@ function MainView() {
       </Section> : null}
 
       {account ? <Section header={<Text>历史 · UTC 自然日</Text>} footer={<Text>最近 7 / 30 天包含今日，今日尚未结束。空日期与未知数据不会填成零；历史统计仅对已取得数据求和。</Text>}>
-        <Picker value={period} pickerStyle="segmented" onChanged={value => {
+        <Picker title="统计时段" value={period} pickerStyle="menu" onChanged={value => {
           setPeriod(value as Period)
           setReload(current => ({ generation: current.generation + 1, force: false, verify: false }))
         }} disabled={busy}>

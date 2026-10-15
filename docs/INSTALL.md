@@ -2,7 +2,7 @@
 
 **[安装 Cloudflare Workers Meter 到 Scripting](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2Fyouniube%2Fscripting-cloudflare-zujian%2Fmain%2Freleases%2Fcloudflare-workers-meter.zip%22%5D)**
 
-当前版本 **1.1.0 · Premium Dashboard** 提供橙色额度环、左右分区中号、Worker 流量条和带错误统计的大号仪表盘。浅深色跟随系统；包含此前的首次启动修复。先更新原脚本，再重新运行，沿用原账号配置与凭据作用域。
+当前版本 **1.1.1 · Premium Dashboard** 提供橙色额度环、左右分区中号、Worker 流量条和带错误统计的大号仪表盘，并将历史切换改为有“统计时段”标题的菜单行。浅深色跟随系统；包含此前的首次启动修复。先更新原脚本，再重新运行，沿用原账号配置与凭据作用域。
 
 1. 在 iPhone 安装并打开 Scripting。
 2. 用 Safari 打开上面的安装链接。在官方分享页点击打开 Scripting，并确认导入。
@@ -30,11 +30,12 @@ https://github.com/youniube/scripting-cloudflare-zujian/tree/main/scripts/Cloudf
 
 ## 使用与更新
 
-- 查看历史：在脚本内选择“今日 / 昨日 / 7 天 / 30 天”。先查看一次“7 天”可以填充大号 Widget 的趋势缓存。
+- 查看历史：运行脚本进入“Workers 额度”页面，在“历史 · UTC 自然日”区域点“统计时段”菜单行，再选择“今日 / 昨日 / 7 天 / 30 天”。选择“7 天”并等待查询完成可以填充大号 Widget 的趋势缓存。这个菜单位于管理页面，小组件预览页没有历史选择器。
 - 手动刷新：脚本内点击“手动刷新”；最短间隔为 1 分钟。Widget 刷新时间由系统决定。
 - 固定账号：在账号管理中复制 Widget 参数，再粘贴到对应桌面小组件。
 - 更新：仍使用同一安装入口，保留原脚本并选择更新。删除原脚本或导入为另一独立脚本可能需要重新填写 Token。
-- 更新 Widget 样式：导入 1.1.0 后，运行原脚本，在“Widget 预览”重新打开对应尺寸并点击“重新加载”。预览“主题”保持“跟随系统”，可临时选择浅色、深色分别检查。桌面外观仍需等 WidgetKit 更新后确认。完整验证路径见 [UI 设计与真机步骤](UI-DESIGN.md)。
+- 旧版本提示最新：把原脚本的“远程资源”URL 改为上面的 `/main/releases/` ZIP 地址，保存后再点“立即更新”，确认版本变为 1.1.1。包含固定 Git 提交编号的地址只提供对应历史版本，不适合长期自动更新。
+- 更新 Widget 样式：导入 1.1.1 后，运行原脚本，在“Widget 预览”重新打开对应尺寸并点击“重新加载”。预览“主题”保持“跟随系统”，可临时选择浅色、深色分别检查。桌面外观仍需等 WidgetKit 更新后确认。完整验证路径见 [UI 设计与真机步骤](UI-DESIGN.md)。
 - 凭据：API Token 只保存在本机 Keychain，不在 GitHub 和 ZIP 中。
 
 安装链接使用 [Scripting 官方分享页](https://www.scripting.fun/import_scripts/) 的 JSON URL 编码格式，目录导入方式与 [官方脚本仓库](https://github.com/scriptingapp/scripts#importing-scripts) 一致。已核对格式，但尚未连接 iPhone 实测原生导入、更新与桌面呈现。

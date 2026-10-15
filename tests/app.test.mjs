@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { BASE_TIME, createRuntime, fixtureAccount, textContent } from "./harness.mjs"
+import { BASE_TIME, createRuntime, fixtureAccount, fixtureCaps, plain, textContent } from "./harness.mjs"
 
 function nodes(value, type) {
   if (!value || typeof value !== "object") return []
@@ -64,4 +64,68 @@ test("主界面只显示当前账号与时段的数据，账号被清空时回�
     assert.equal(content.includes("current-worker"), item.visible)
     if (!item.profile.accounts.length) assert.match(content, /开始监控/)
   }
+})
+
+test("历史时段通过带标题的菜单行选择，四个时段均可切换且查询中禁用", async () => {
+  const account = fixtureAccount()
+  for (const busy of [false, true]) {
+    const runtime = createRuntime({ captureEntry: true, initialHooks: [settings(account), "today", null, busy] })
+    const element = await launch(runtime)
+    const history = nodes(element, "Section").find(node => textContent(node.props.header) === "历史 · UTC 自然日")
+    const picker = nodes(history, "Picker").find(node => node.props.title === "统计时段")
+    assert.ok(picker, "历史时段需要一个具名的可见操作入口")
+    assert.equal(picker.props.pickerStyle, "menu")
+    assert.equal(picker.props.value, "today")
+    assert.equal(picker.props.disabled, busy)
+    const options = nodes(picker, "Text").map(node => ({ tag: node.props.tag, title: textContent(node) }))
+    assert.deepEqual(plain(options), [
+      { tag: "today", title: "今日" }, { tag: "yesterday", title: "昨日" },
+      { tag: "7d", title: "7 天" }, { tag: "30d", title: "30 天" },
+    ])
+    if (!busy) {
+      for (const option of options) {
+        picker.props.onChanged(option.tag)
+        assert.equal(runtime.state.hooks[1], option.tag)
+        assert.equal(runtime.state.hooks[5].force, false)
+        assert.equal(runtime.state.hooks[5].verify, false)
+      }
+    }
+  }
+})
+
+test("今日刷新后从菜单切换七天，通过真实 App effect 补取六天并共享给大号趋势", async () => {
+  const runtime = createRuntime({ captureEntry: true })
+  const storage = runtime.load("storage")
+  const account = storage.saveAccount(fixtureAccount(), "test-only-secret")
+  storage.writeCapabilities(account, fixtureCaps())
+  await runtime.load("service").loadMonitor(account, "today")
+  assert.equal(runtime.state.calls.length, 1)
+  const element = await launch(runtime)
+  const picker = nodes(element, "Picker").find(node => node.props.title === "统计时段")
+  assert.ok(picker)
+  picker.props.onChanged("7d")
+
+  // 下一次 JS 渲染继承 hooks 和持久缓存；不模拟 SwiftUI 的原生控件呈现。
+  const next = createRuntime({
+    captureEntry: true, initialHooks: runtime.state.hooks,
+    storage: runtime.state.storage, keychain: runtime.state.keychain,
+  })
+  await launch(next)
+  const cleanup = next.state.effects[0]()
+  await new Promise(resolve => setImmediate(resolve))
+  const result = next.state.hooks[2]
+  assert.equal(result.period, "7d")
+  assert.equal(result.days.length, 7)
+  assert.equal(result.missingDates.length, 0)
+  assert.equal(result.failures.length, 0)
+  assert.equal(next.state.calls.length, 6, "刚取得的今日数据必须复用，只补取六个缺失日")
+  assert.equal(next.state.hooks[3], false)
+  const history = next.load("service").cachedView(account, "7d")
+  assert.equal(history.days.length, 7)
+  const widget = next.load("views").WidgetView({
+    view: next.load("service").cachedView(account, "today"), family: "systemLarge",
+    dates: history.expectedDates, history: history.days,
+  })
+  assert.doesNotMatch(textContent(widget), /缺 \d+ 天/)
+  cleanup()
 })
