@@ -51,6 +51,8 @@ GraphQL 查询使用 JSON 编码后的内联字符串值，避免猜测教程间
 
 ## 可见限制
 
+1.1.0 的 Widget 升级按用户指定的 [官方开发 Skill](https://github.com/ScriptingApp/scripting-app-development/blob/main/SKILL.md) 读取 Widget 与验证说明，并核对 Shapes 中的 `ShapeProps` / `StrokeStyle` 类型块、`Circle.trim`、`ZStack`、`rotationEffect`、动态渐变、`Image.systemName`、`monospacedDigit` 与 `kerning`。具体来源与真机核验步骤见 [UI-DESIGN.md](UI-DESIGN.md)。没有新增请求、认证方式或数据权限，完整手机 `.d.ts` 检查仍需连接 App。
+
 1.0.2 的布局及配色额外核对了 [padding](https://scriptingapp.github.io/guide/View%20Modifiers/padding)、[frame](https://scriptingapp.github.io/guide/View%20Modifiers/frame)、[DynamicShapeStyle](https://scriptingapp.github.io/guide/Types/DynamicShapeStyle) 和 [widgetBackground](https://scriptingapp.github.io/guide/View%20Modifiers/widgetBackground)。动态颜色由原生环境选择 `light` / `dark`，没有使用设备当前主题的单次快照，也没有通过 `preferredColorScheme` 固定外观。`Widget.displaySize` 的点数语义以 Widget API 为准。
 
 - 没有真实 Token，当前运行没有完成在线账号数据验证；首次手机配置时会在线验证 Schema 与账号能力。

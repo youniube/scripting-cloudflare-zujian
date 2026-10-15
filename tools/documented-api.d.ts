@@ -9,7 +9,9 @@ declare namespace JSX {
   interface IntrinsicAttributes { key?: string | number }
 }
 type ViewChild = JSX.Element | string | number | boolean | null | undefined | ViewChild[]
-type Style = string | { light: string; dark: string }
+type LinearStyle = { gradient: { color: string; location: number }[]; startPoint: { x: number; y: number }; endPoint: { x: number; y: number } }
+type ShapeStyle = string | LinearStyle
+type Style = ShapeStyle | { light: ShapeStyle; dark: ShapeStyle }
 type Frame = { width?: number; height?: number; alignment?: string } | { minWidth?: number; minHeight?: number; maxWidth?: number | "infinity"; maxHeight?: number | "infinity"; idealWidth?: number | "infinity"; idealHeight?: number | "infinity"; alignment?: string }
 interface CommonView {
   children?: ViewChild
@@ -18,7 +20,12 @@ interface CommonView {
   fontDesign?: "default" | "rounded" | "monospaced" | "serif"
   foregroundStyle?: Style
   widgetBackground?: Style
+  background?: Style | { style: Style; shape: { type: "rect"; cornerRadius: number } }
   tint?: Style
+  rotationEffect?: number
+  kerning?: number
+  monospacedDigit?: boolean
+  opacity?: number
   frame?: Frame
   padding?: boolean | number | { horizontal?: number; vertical?: number; top?: number; bottom?: number; leading?: number; trailing?: number }
   disabled?: boolean
@@ -27,6 +34,12 @@ interface CommonView {
   tag?: string | number
 }
 type Component<P = CommonView> = (props: P) => JSX.Element
+// 官方 Shapes 文档的 ShapeProps / StrokeStyle 子集，仍不是完整 App 同步声明。
+type NativeShapeProps = CommonView & {
+  trim?: { from: number; to: number }
+  fill?: Style
+  stroke?: Style | { shapeStyle: Style; strokeStyle: { lineWidth?: number; lineCap?: "butt" | "round" | "square"; dash?: number[] } }
+}
 declare function createElement(type: unknown, props: unknown, ...children: ViewChild[]): JSX.Element
 declare const Fragment: Component
 interface NativeRequest {
@@ -46,9 +59,12 @@ declare module "scripting" {
   export const Text: Component
   export const VStack: Component<CommonView & { alignment?: "leading" | "center" | "trailing"; spacing?: number }>
   export const HStack: Component<CommonView & { alignment?: "top" | "center" | "bottom" | "firstTextBaseline" | "lastTextBaseline"; spacing?: number }>
+  export const ZStack: Component<CommonView & { alignment?: string }>
+  export const Circle: Component<NativeShapeProps>
+  export const Image: Component<CommonView & { systemName: string }>
   export const Spacer: Component
   export const Divider: Component
-  export const RoundedRectangle: Component<CommonView & { cornerRadius: number; fill?: Style }>
+  export const RoundedRectangle: Component<NativeShapeProps & { cornerRadius: number }>
   export const ProgressView: Component<CommonView & { value?: number; total?: number; progressViewStyle?: "linear" | "circular" | "automatic" }>
   export const DateLabel: Component<CommonView & { date: Date; style: "date" | "time" | "timer" | "relative" | "offset" }>
   export const Chart: Component<CommonView & { chartLegend?: "hidden" | "automatic" | "visible"; chartXScale?: string[]; chartYAxis?: "automatic" | "hidden" | "visible" }>

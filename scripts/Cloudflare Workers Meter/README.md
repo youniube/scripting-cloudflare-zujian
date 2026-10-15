@@ -10,7 +10,18 @@
 
 用 iPhone 的 Safari 打开上面的链接，在官方分享页点击“在 Scripting 中打开”并确认导入。安装后运行脚本，添加 Cloudflare 只读账号，再添加中号 Scripting 桌面小组件。手机无需下载整个 GitHub 仓库或运行桌面命令。
 
-当前版本 **1.0.2** 修复三种 Widget 的贴边裁切，提供跟随系统的浅色、深色两套配色，并改善大号排名与趋势图的空间分配。少量调用显示精确的小百分比，剩余次数显示完整数字。首次运行时应显示“Workers 额度”“开始监控”和“添加账号”。如果已导入旧版，请更新原脚本；删除脚本或导入为独立副本可能导致需要重新配置凭据。
+当前版本 **1.1.0 · Premium Dashboard** 采用 Cloudflare 橙色、深蓝黑渐变、原生额度环与 Worker 流量条；浅色主题跟随系统自动适配。小号突出请求数和剩余百分比，中号采用左右分区，大号增加错误统计与七日趋势。原有 API、认证、缓存、UTC 统计和账号管理逻辑保留。更新原脚本可避免创建新的凭据作用域。
+
+## 视觉设计与预览
+
+先研究了四个指定开源仓库的截图及相关实现，构思 A 科技仪表盘、B Apple 极简、C GitHub 数据统计三套方案，最终实现 A + C 融合。[设计研究与原生核验步骤](https://github.com/youniube/scripting-cloudflare-zujian/blob/main/docs/UI-DESIGN.md)。
+
+- [A / B / C 设计方案对比](https://raw.githubusercontent.com/youniube/scripting-cloudflare-zujian/main/docs/widget-designs.png)
+- [三尺寸浅深色布局参考](https://raw.githubusercontent.com/youniube/scripting-cloudflare-zujian/main/docs/widget-preview.png)
+- [小尺寸 / 长名称 / 95% 告警参考](https://raw.githubusercontent.com/youniube/scripting-cloudflare-zujian/main/docs/widget-preview-stress.png)
+- [两次请求 / 历史缺失参考](https://raw.githubusercontent.com/youniube/scripting-cloudflare-zujian/main/docs/widget-preview-low.png)
+
+**这些是带模拟数据的桌面 HTML 设计稿和 TSX 视图树近似排版，不是 Scripting 原生预览或 iPhone 截图。** 实际 Widget 使用 `Circle`、`ZStack`、`ProgressView`、`RoundedRectangle` 等原生组件，安装包不包含设计稿或模拟数据。真机预览使用脚本内“小号 / 中号 / 大号”按钮，然后添加到桌面检查。
 
 如果安装页没有自动打开 App，可以复制以下远程 ZIP 地址，粘贴到 Scripting 的远程导入入口或 [官方链接生成页](https://www.scripting.fun/import_scripts/)：
 
@@ -140,11 +151,13 @@ App 的“手动刷新”会刷新所选时段；最短间隔为 1 分钟。“�
 
 | 尺寸 | 显示内容 |
 | --- | --- |
-| 小号 | 账号名、今日调用估算、估算剩余/阈值、百分比、进度条、缓存状态 |
-| 中号 | 小号信息加日额度说明与请求量前 3 的 Worker |
-| 大号 | 套餐与额度摘要、UTC 重置倒计时、Worker 排名、近 7 日柱状趋势、缓存更新时间 |
+| 小号 | Cloudflare 风格云标识、今日请求估算、大数字、原生额度环、估算剩余百分比、缓存状态 |
+| 中号 | 左侧请求数 / 估算剩余次数 / 额度环；右侧 Top 3 Worker 与按账户总量计算的流量条；底部状态和更新时间 |
+| 大号 | 请求 / 额度摘要、额度环、错误数与错误率、UTC 重置倒计时、近七日柱状趋势、Worker 排名、更新时间 |
 
-三种尺寸都在独立内容区保留 12–16pt 内边距，根背景填满 Widget；长名称限制为一行。大号按设备提供的点数尺寸调整排名行数（最多 5 项）和图表高度，中号保持前 3 项。历史图给每个 UTC 日期显示标签，缺数据标为 `—`，不补成零。
+三种尺寸都在独立内容区保留 12–16pt 内边距，根背景填满 Widget，顶部保留账号名称以区分多个账号。长名称在原生单行约束下缩放，必要时省略，完整名称可在 App 查看。大号按点数尺寸调整排名行数（最多 4 项）和图表高度，中号保持前 3 项。历史图给每个 UTC 日期显示标签，缺数据标为 `—`；真实零值不会画成正值柱。
+
+额度环按真实使用率绘制，零请求不画进度弧；超额时环最多一圈，文字仍显示实际使用率。Paid / 未确认套餐不套免费日额度，环显示无日额度状态。小号剩余百分比避免把已使用的额度舍入成完整 `100%`；中大号剩余次数保留完整数字。
 
 **深浅色自动适应**：预览的“主题”选择“跟随系统”，日常随 iOS 的浅色/深色外观切换。背景、正文、次级文字、分隔线和告警色均使用官方动态颜色绑定，不需要重新设置账号。iOS 桌面着色模式另受系统渲染规则控制。
 
@@ -186,8 +199,8 @@ Widget 向系统建议约 30 分钟后再请求数据，并在临近 UTC 午夜�
 
 | 状态 | 处理方式 |
 | --- | --- |
-| 首次运行空白页面 | 更新到 1.0.2，重新运行原脚本；未配置账号时应出现“开始监控”和“添加账号” |
-| Widget 文字贴边或被圆角裁切 | 更新到 1.0.2，在预览里点击“重新加载”；保留原脚本，桌面由系统安排更新 |
+| 首次运行空白页面 | 更新到 1.1.0，重新运行原脚本；未配置账号时应出现“开始监控”和“添加账号” |
+| Widget 仍显示旧样式 | 更新原脚本到 1.1.0，在预览里点击“重新加载”；桌面由系统安排更新 |
 | Token 无效/不可读 | 检查过期、撤销或粘贴错误；重启后先解锁；在 App 重新保存 Token |
 | 权限不足 | 检查 `Account Analytics → Read`、正确 Account ID 与 Token 账号范围 |
 | API 限流 | 等待页面显示的冷却时间，不连续点击刷新 |
@@ -212,7 +225,16 @@ npm test
 npm run package
 ```
 
-桌面依赖只有 TypeScript。`check` 使用根据官方文档整理的最小 API 合约，不是 Scripting 完整声明；43 项自动化测试使用模拟响应，验证业务、请求/缓存行为、首次启动、三尺寸结构、主题颜色绑定和低用量精度。测试数据只存在于 `tests/`，导入包不包含它们。
+桌面依赖只有 TypeScript。`check` 使用根据官方文档整理的最小 API 合约，不是 Scripting 完整声明；47 项自动化测试使用模拟响应，验证业务、缓存、首次启动、三尺寸结构、主题、额度环、流量条、错误统计和低用量精度。桌面参考数据只存在于 `tests/` 与 `tools/`，导入包不包含它们。
+
+重新生成桌面 HTML 参考（无需新增依赖，不代表 iOS 渲染）：
+
+```powershell
+node tools/render-design-concepts.mjs
+node tools/render-widget-previews.mjs
+node tools/render-widget-previews.mjs --stress
+node tools/render-widget-previews.mjs --low
+```
 
 连接官方 CLI 并得到本机 App 的 `dts/` 后，可做完整声明诊断：
 

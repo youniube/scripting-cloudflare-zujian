@@ -1,0 +1,95 @@
+/** Desktop approximation of the actual TSX view tree. Never used by iOS or packaged. */
+import fs from "node:fs"
+import { BASE_TIME, createRuntime, fixtureAccount } from "../tests/harness.mjs"
+
+const { WidgetView, widgetTheme } = createRuntime().load("views")
+const scenario = process.argv.includes("--stress") ? "stress" : process.argv.includes("--low") ? "low" : "normal"
+const dates = Array.from({ length: 7 }, (_, index) => `2026-10-${String(8 + index).padStart(2, "0")}`)
+const requests = scenario === "low" ? 2 : scenario === "stress" ? 95_000 : 42_680
+const counts = scenario === "low" ? [2] : scenario === "stress" ? [30_000, 25_000, 20_000, 10_000, 7_000, 3_000] : [26_410, 11_350, 4_920]
+const names = scenario === "stress" ? counts.map((_, index) => `a-long-worker-name-for-layout-verification-${index}`) : ["api-gateway", "image-proxy", "edge-cache"]
+const day = { version: 1, dateUTC: dates[6], fetchedAt: new Date(BASE_TIME - 120_000).toISOString(), requests, errors: scenario === "low" ? 0 : 13, workers: counts.map((count, index) => ({ name: names[index], requests: count, errors: 0 })), warnings: [] }
+const view = { account: fixtureAccount({ displayName: scenario === "stress" ? "非常长的 Cloudflare 账号名称" : "个人账号" }), period: "today", expectedDates: [day.dateUTC], days: [day], failures: [], missingDates: [], fromCache: false }
+const history = scenario === "low" ? [day] : dates.map((date, index) => ({ ...day, dateUTC: date, requests: [18_240, 24_310, 19_820, 33_600, 29_450, 38_120, requests][index] }))
+const escape = value => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;")
+function resolve(value, mode) { return value && typeof value === "object" && "light" in value ? value[mode] : value }
+function cssColor(value, mode) {
+  value = resolve(value, mode)
+  if (typeof value === "string") return value
+  if (value?.gradient) {
+    const angle = Math.atan2(value.endPoint.x - value.startPoint.x, -(value.endPoint.y - value.startPoint.y)) * 180 / Math.PI
+    return `linear-gradient(${angle}deg,${value.gradient.map(stop => `${stop.color} ${stop.location * 100}%`).join(",")})`
+  }
+  return "transparent"
+}
+let gradientId = 0
+function circle(node, mode) {
+  const p = node.props, size = p.frame.width, style = p.stroke?.strokeStyle ?? {}, stroke = resolve(p.stroke?.shapeStyle ?? p.stroke, mode)
+  const id = `gradient-${gradientId++}`
+  const gradient = typeof stroke === "object" && stroke?.gradient
+  const defs = gradient ? `<defs><linearGradient id="${id}" x1="${stroke.startPoint.x * 100}%" y1="${stroke.startPoint.y * 100}%" x2="${stroke.endPoint.x * 100}%" y2="${stroke.endPoint.y * 100}%">${gradient.map(stop => `<stop offset="${stop.location * 100}%" stop-color="${stop.color}"/>`).join("")}</linearGradient></defs>` : ""
+  const circumference = Math.PI * size
+  const dash = p.trim ? `${(p.trim.to - p.trim.from) * circumference} ${circumference}` : style.dash?.join(" ")
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="overflow:visible">${defs}<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="${p.fill ? cssColor(p.fill, mode) : "none"}" stroke="${stroke ? gradient ? `url(#${id})` : stroke : "none"}" stroke-width="${style.lineWidth ?? 0}" stroke-linecap="${style.lineCap ?? "butt"}" ${dash ? `stroke-dasharray="${dash}"` : ""} transform="rotate(${p.rotationEffect ?? 0} ${size / 2} ${size / 2})"/></svg>`
+}
+function render(node, mode, parent = "", depth = 0) {
+  if (node == null || typeof node === "boolean") return ""
+  if (typeof node !== "object") return escape(node)
+  const p = node.props ?? {}, f = p.frame ?? {}, type = node.type
+  const style = ["box-sizing:border-box", "min-width:0"]
+  if (type === "VStack" || type === "HStack") {
+    style.push("display:flex", `flex-direction:${type === "VStack" ? "column" : "row"}`, `gap:${p.spacing ?? 8}px`)
+    const align = type === "VStack" ? p.alignment === "trailing" ? "flex-end" : p.alignment === "leading" ? "stretch" : "center" : { top: "flex-start", bottom: "flex-end", firstTextBaseline: "baseline" }[p.alignment] ?? "center"
+    style.push(`align-items:${align}`)
+    if (depth < 2) style.push("flex:1", "min-height:0")
+  }
+  if (type === "ZStack") style.push("display:grid", "place-items:center")
+  if (parent === "ZStack") style.push("grid-area:1/1")
+  if (p.foregroundStyle) style.push(`color:${cssColor(p.foregroundStyle, mode)}`)
+  if (p.widgetBackground) style.push(`background:${cssColor(p.widgetBackground, mode)}`)
+  if (p.background) {
+    style.push(`background:${cssColor(p.background.style ?? p.background, mode)}`)
+    if (p.background.shape) style.push(`border-radius:${p.background.shape.cornerRadius}px`)
+  }
+  if (typeof p.padding === "number") style.push(`padding:${p.padding}px`)
+  else if (p.padding) style.push(`padding:${p.padding.vertical ?? 0}px ${p.padding.horizontal ?? 0}px`)
+  if (typeof p.font === "number") style.push(`font-size:${p.font}px`, "line-height:1.2")
+  if (p.fontWeight) style.push(`font-weight:${{ semibold: 600, bold: 700, medium: 500 }[p.fontWeight] ?? 400}`)
+  if (p.fontDesign === "monospaced") style.push('font-family:"Consolas",monospace')
+  if (p.monospacedDigit) style.push("font-variant-numeric:tabular-nums")
+  if (p.kerning) style.push(`letter-spacing:${p.kerning}px`)
+  if (f.width !== undefined) style.push(`width:${f.width}px`, "flex-shrink:0")
+  if (f.height !== undefined) style.push(`height:${f.height}px`, "flex-shrink:0")
+  if (f.maxWidth === "infinity") style.push(parent === "HStack" ? "flex:1" : "width:100%")
+  if (f.alignment === "bottom") style.push("justify-content:flex-end")
+  if (f.alignment === "trailing") style.push("text-align:right")
+  let children = (p.children ?? []).map(child => render(child, mode, type, depth + 1)).join("")
+  if (type === "Text") {
+    style.push("display:block", "flex-shrink:1")
+    if (p.lineLimit === 1) style.push("white-space:nowrap", "text-overflow:ellipsis", "overflow:hidden")
+  }
+  if (type === "Spacer") style.push("flex:1", "min-height:0", "min-width:0")
+  if (type === "RoundedRectangle") style.push(`background:${cssColor(p.fill, mode)}`, `border-radius:${p.cornerRadius}px`)
+  if (type === "Circle") children = circle(node, mode)
+  if (type === "Image") { style.push("display:flex", "align-items:center", "justify-content:center", "font-size:16px"); children = "☁" }
+  if (type === "ProgressView") {
+    style.push("width:100%", "height:3px", "min-height:3px", "max-height:3px", "border-radius:3px", `background:${cssColor(widgetTheme.track, mode)}`)
+    children = `<div style="height:3px;border-radius:3px;background:${cssColor(p.tint, mode)};width:${(p.value ?? 0) * 100}%"></div>`
+  }
+  if (type === "DateLabel") children = "12:00:00"
+  return `<div data-native="${type}" style="${style.join(";")}">${children}</div>`
+}
+const sizes = scenario === "stress" ? [["systemSmall", "小号", 148, 148], ["systemMedium", "中号", 321, 148], ["systemLarge", "大号", 321, 329]] : [["systemSmall", "小号", 158, 158], ["systemMedium", "中号", 338, 158], ["systemLarge", "大号", 338, 354]]
+let columns = ""
+for (const mode of ["dark", "light"]) {
+  let cards = ""
+  for (const [family, title, width, height] of sizes) {
+    const tree = WidgetView({ view, family, dates, history, displaySize: { width, height } })
+    cards += `<section><p>${title} · ${width} × ${height} pt</p><div class="widget" data-widget="${family}-${mode}" style="width:${width}px;height:${height}px">${render(tree, mode)}</div></section>`
+  }
+  columns += `<article class="${mode}"><h2>${mode === "dark" ? "深色 · Premium Dashboard" : "浅色 · Adaptive Light"}</h2>${cards}</article>`
+}
+const html = `<!doctype html><html lang="zh"><meta charset="utf-8"><title>Cloudflare Workers — TSX 视图树桌面参考</title><style>*{box-sizing:border-box}body{margin:0;padding:22px 28px;background:#e4eaf2;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;color:#263448}h1{margin:0 0 8px;font-size:21px;letter-spacing:-.6px}.notice{font-size:11px;margin-bottom:18px;line-height:1.8}main{display:flex;gap:24px}article{width:480px;border-radius:20px;padding:18px 20px;background:#f0f3f8}.dark{background:#202b3b;color:#d8e1ed}h2{font-size:14px;margin:0 0 14px}section{display:flex;flex-direction:column;align-items:center;margin-bottom:18px}section p{font-size:10px;margin:0 0 8px;opacity:.75}.widget{display:flex;border-radius:22px;overflow:hidden}.widget svg{display:block;flex-shrink:0}</style><h1>Cloudflare Workers · A + C 融合实现</h1><div class="notice">由实际 TSX 视图树生成的桌面近似排版 · ${scenario} 场景 / 模拟数据 · 不是 Scripting 原生预览或 iPhone 真机截图。<br>圆环与流量条直接读取被测组件的数值；SwiftUI 字体、缩放、裁切和系统主题切换仍需在手机验证。</div><main>${columns}</main><script>window.scrollTo(0,0);history.scrollRestoration='manual';const issues=[];for(const card of document.querySelectorAll('[data-widget]')){const b=card.getBoundingClientRect();for(const text of card.querySelectorAll('[data-native="Text"]')){const r=text.getBoundingClientRect();if(r.left<b.left+7||r.right>b.right-7||r.top<b.top+5||r.bottom>b.bottom-5)issues.push({widget:card.dataset.widget,text:text.textContent})}}document.body.dataset.edgeIssues=JSON.stringify(issues)</script></html>`
+const filename = scenario === "normal" ? "widget-preview.html" : `widget-preview-${scenario}.html`
+fs.writeFileSync(new URL(`../docs/${filename}`, import.meta.url), html)
+console.log(`Generated docs/${filename}; desktop approximation only.`)

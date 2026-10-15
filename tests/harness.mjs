@@ -34,7 +34,7 @@ export function createRuntime(options = {}) {
   }
   const clone = value => JSON.parse(JSON.stringify(value))
   const native = {}
-  for (const name of ["Text", "VStack", "HStack", "Spacer", "Divider", "RoundedRectangle", "ProgressView", "DateLabel", "Chart", "BarChart", "NavigationStack", "List", "Section", "Button", "Picker", "TextField", "SecureField", "Toggle"]) {
+  for (const name of ["Text", "VStack", "HStack", "ZStack", "Circle", "Image", "Spacer", "Divider", "RoundedRectangle", "ProgressView", "DateLabel", "Chart", "BarChart", "NavigationStack", "List", "Section", "Button", "Picker", "TextField", "SecureField", "Toggle"]) {
     native[name] = Object.assign(props => ({ type: name, props }), { native: true })
   }
   let hookIndex = 0
