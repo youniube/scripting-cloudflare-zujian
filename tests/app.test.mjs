@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { BASE_TIME, createRuntime, fixtureAccount, fixtureCaps, plain, textContent } from "./harness.mjs"
+import { analytics, BASE_TIME, createRuntime, fixtureAccount, fixtureCaps, plain, response, textContent } from "./harness.mjs"
 
 function nodes(value, type) {
   if (!value || typeof value !== "object") return []
@@ -86,8 +86,7 @@ test("历史时段通过带标题的菜单行选择，四个时段均可切换�
       for (const option of options) {
         picker.props.onChanged(option.tag)
         assert.equal(runtime.state.hooks[1], option.tag)
-        assert.equal(runtime.state.hooks[5].force, false)
-        assert.equal(runtime.state.hooks[5].verify, false)
+        assert.equal(runtime.state.hooks[5], 0, "时段变更只由 period 驱动一次，不再叠加另一轮 reload")
       }
     }
   }
@@ -128,4 +127,64 @@ test("今日刷新后从菜单切换七天，通过真实 App effect 补取六�
   })
   assert.doesNotMatch(textContent(widget), /缺 \d+ 天/)
   cleanup()
+})
+
+test("手动刷新按钮直接启动查询，保留进度与完成反馈，不触发验证 API", async () => {
+  let complete
+  const runtime = createRuntime({ captureEntry: true, fetch: () => new Promise(resolve => { complete = resolve }) })
+  const storage = runtime.load("storage")
+  const account = storage.saveAccount(fixtureAccount(), "test-only-secret")
+  storage.writeCapabilities(account, fixtureCaps())
+  const element = await launch(runtime)
+  const button = nodes(element, "Button").find(node => node.props.title === "手动刷新")
+  assert.equal(button.props.buttonStyle, "borderless")
+  const work = button.props.action()
+  assert.equal(runtime.state.calls.length, 1, "点击直接进入请求，不依赖随后某次 effect")
+  assert.equal(runtime.state.hooks[3], true)
+  assert.match(runtime.state.hooks[4], /正在刷新/)
+  assert.doesNotMatch(JSON.parse(runtime.state.calls[0].init.body).query, /__schema|__type/)
+  complete(response(analytics(624)))
+  await work
+  assert.equal(runtime.state.hooks[3], false)
+  assert.equal(runtime.state.hooks[2].days[0].requests, 624)
+  assert.match(runtime.state.hooks[4], /刷新完成.*1 \/ 1 天/)
+  const next = createRuntime({ captureEntry: true, initialHooks: runtime.state.hooks, storage: runtime.state.storage, keychain: runtime.state.keychain })
+  assert.match(allText(await launch(next)), /刷新完成.*1 \/ 1 天/)
+})
+
+test("刷新冷却与占用都反馈原因，网络失败保留缓存并展示失败状态", async () => {
+  for (const scenario of ["cooldown", "busy", "network"]) {
+    const runtime = createRuntime({ captureEntry: true, fetch: async () => { throw new Error("offline secret-sentinel") } })
+    const storage = runtime.load("storage")
+    const account = storage.saveAccount(fixtureAccount(), "test-only-secret")
+    storage.writeCapabilities(account, fixtureCaps())
+    storage.writeDay(account, {
+      version: 1, dateUTC: "2026-10-14", fetchedAt: new Date(BASE_TIME - 15 * 60_000).toISOString(),
+      requests: 624, errors: 0, workers: [], warnings: [],
+    })
+    if (scenario === "cooldown") storage.markAttempt(account.id, BASE_TIME - 15_000)
+    if (scenario === "busy") storage.acquireLease(account.id, 150_000, BASE_TIME)
+    const element = await launch(runtime)
+    await nodes(element, "Button").find(node => node.props.title === "手动刷新").props.action()
+    assert.equal(runtime.state.hooks[3], false)
+    assert.equal(runtime.state.hooks[2].days[0].requests, 624)
+    assert.equal(runtime.state.calls.length, scenario === "network" ? 1 : 0)
+    assert.match(runtime.state.hooks[4], scenario === "cooldown" ? /冷却.*重试/ : scenario === "busy" ? /已有查询.*稍后/ : /刷新未完成/)
+    assert.doesNotMatch(runtime.state.hooks[4], /secret-sentinel/)
+    if (scenario === "network") assert.equal(runtime.state.hooks[2].failures[0].kind, "network")
+  }
+})
+
+test("七天页面点击手动刷新会补取缺失日，并保留完成天数", async () => {
+  const runtime = createRuntime({ captureEntry: true })
+  const storage = runtime.load("storage")
+  const account = storage.saveAccount(fixtureAccount(), "test-only-secret")
+  storage.writeCapabilities(account, fixtureCaps())
+  await runtime.load("service").loadMonitor(account, "today")
+  runtime.state.hooks = [settings(account), "7d"]
+  const element = await launch(runtime)
+  await nodes(element, "Button").find(node => node.props.title === "手动刷新").props.action()
+  assert.equal(runtime.state.calls.length, 7)
+  assert.equal(runtime.state.hooks[2].missingDates.length, 0)
+  assert.match(runtime.state.hooks[4], /刷新完成.*7 \/ 7 天/)
 })

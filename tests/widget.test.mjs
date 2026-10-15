@@ -73,6 +73,24 @@ test("三尺寸都在独立内容容器内留白，长账号名与 Worker 名称
   assert.ok(SetupWidget({ message: "尚未配置账号" }).props.children[0].props.padding >= 12)
 })
 
+test("品牌文字保持单行并保留独立宽度，窄小号与长账号名不会让末字换行", () => {
+  const { WidgetView, SetupWidget } = createRuntime().load("views")
+  for (const width of [138, 148, 158]) {
+    const view = fixtureView()
+    view.account.displayName = "很长的账号名称-worker-account-with-many-characters"
+    const root = WidgetView({ view, family: "systemSmall", dates: [], history: [], displaySize: { width, height: 148 } })
+    const brand = nodes(root, "Text").find(node => textContent(node) === "CLOUDFLARE")
+    assert.equal(brand.props.lineLimit, 1)
+    assert.ok(brand.props.minScaleFactor > 0 && brand.props.minScaleFactor < 1)
+    assert.ok(brand.props.frame.width >= 65)
+    assert.ok(brand.props.kerning <= 0.4)
+    const account = nodes(root, "Text").find(node => textContent(node) === view.account.displayName)
+    assert.equal(account.props.frame.minWidth, 0)
+    assert.equal(account.props.lineLimit, 1)
+  }
+  assert.equal(nodes(SetupWidget({ message: "添加账号" }), "Text").find(node => textContent(node) === "CLOUDFLARE").props.lineLimit, 1)
+})
+
 test("低用量显示 0.002%，小号剩余 99.998%，中大号剩余 99,998", () => {
   const { WidgetView } = createRuntime().load("views")
   const view = fixtureView(2)

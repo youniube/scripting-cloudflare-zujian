@@ -42,16 +42,23 @@ export async function loadMonitor(account: AccountConfig, period: Period = "toda
 async function performLoad(account: AccountConfig, period: Period, options: LoadOptions): Promise<MonitorView> {
   const now = options.now ?? Date.now()
   const initial = cachedView(account, period, now)
-  const needs = initial.expectedDates.filter(date => options.force || !isFresh(readDay(account.id, date), now))
-  if (!needs.length && !options.verify) return initial
+  let needs = initial.expectedDates.filter(date => options.force || !isFresh(readDay(account.id, date), now))
+  if (!needs.length && !options.verify) return { ...initial, refreshState: { kind: "fresh" } }
   const oldFailure = readFailure(account.id)
-  if (oldFailure?.retryAt && Date.parse(oldFailure.retryAt) > now) return initial
+  if (oldFailure?.retryAt && Date.parse(oldFailure.retryAt) > now) {
+    return { ...initial, refreshState: { kind: "cooldown", retryAt: oldFailure.retryAt } }
+  }
   const lastAttempt = readAttempt(account.id)
   const minimumGap = options.widget ? 10 * 60_000 : options.force || options.verify ? 60_000 : 2 * 60_000
   const applyGap = options.widget || options.force || options.verify || !!oldFailure || initial.missingDates.length === 0
-  if (applyGap && now - lastAttempt >= 0 && now - lastAttempt < minimumGap) return initial
+  if (applyGap && now - lastAttempt >= 0 && now - lastAttempt < minimumGap) {
+    // 前台可补取从未取得的日期，不因刚刷新今日而阻塞历史；失败/限流与 Widget 仍遵守间隔。
+    const missing = !options.widget && !options.verify && !oldFailure ? needs.filter(date => !readDay(account.id, date)) : []
+    if (!missing.length) return { ...initial, refreshState: { kind: "cooldown", retryAt: new Date(lastAttempt + minimumGap).toISOString() } }
+    needs = missing
+  }
   const lease = acquireLease(account.id, options.widget ? 25_000 : 150_000, now)
-  if (!lease) return initial
+  if (!lease) return { ...initial, refreshState: { kind: "busy" } }
   const failures: Failure[] = []
   let refreshed = false
   try {

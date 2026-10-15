@@ -130,7 +130,7 @@ function planBadge(account: AccountConfig) {
 function BrandHeader({ account, small = false }: { account?: AccountConfig; small?: boolean }) {
   return <HStack spacing={4}>
     <Image systemName="cloud.fill" font={12} foregroundStyle={widgetTheme.brand} frame={{ width: 15, height: 13 }} />
-    <Text font={8} fontWeight="bold" kerning={0.7} foregroundStyle={widgetTheme.brand}>CLOUDFLARE</Text>
+    <Text font={8} fontWeight="bold" kerning={small ? 0.35 : 0.7} foregroundStyle={widgetTheme.brand} lineLimit={1} minScaleFactor={0.8} frame={{ width: small ? 70 : 74, alignment: "leading" }}>CLOUDFLARE</Text>
     {account ? <Text font={small ? 7.5 : 9} foregroundStyle={widgetTheme.secondary} lineLimit={1} minScaleFactor={0.8} frame={{ minWidth: 0, maxWidth: "infinity", alignment: "trailing" }}>{account.displayName}</Text> : <Spacer />}
     {account && !small ? <Text font={7} fontWeight="semibold" fontDesign="monospaced" foregroundStyle={widgetTheme.secondary} padding={{ horizontal: 4, vertical: 2 }} background={{ style: widgetTheme.panel, shape: { type: "rect", cornerRadius: 4 } }}>{planBadge(account)}</Text> : null}
   </HStack>

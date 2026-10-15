@@ -153,3 +153,51 @@ test("午夜刷新建议按 UTC，而不是本地零点", () => {
   const now = Date.parse("2026-10-13T23:50:00Z")
   assert.equal(suggestedReload(now).toISOString(), "2026-10-14T00:01:00.000Z")
 })
+
+test("手动刷新在一分钟内仍可补取缺失历史，已缓存的今日不重复请求", async () => {
+  const runtime = createRuntime()
+  const { account, service } = prepare(runtime)
+  await service.loadMonitor(account, "today")
+  const widget = await service.loadMonitor(account, "7d", { widget: true })
+  assert.equal(widget.days.length, 1)
+  assert.equal(widget.refreshState.kind, "cooldown")
+  assert.equal(runtime.state.calls.length, 1)
+  const result = await service.loadMonitor(account, "7d", { force: true })
+  assert.equal(result.days.length, 7)
+  assert.equal(result.missingDates.length, 0)
+  assert.equal(runtime.state.calls.length, 7)
+  const repeated = await service.loadMonitor(account, "7d", { force: true })
+  assert.equal(runtime.state.calls.length, 7)
+  assert.equal(repeated.refreshState.kind, "cooldown")
+  assert.equal(repeated.refreshState.retryAt, new Date(BASE_TIME + 60_000).toISOString())
+})
+
+test("缓存有效、刷新冷却和跨进程占用分别返回明确状态", async () => {
+  const runtime = createRuntime()
+  const { account, service, storage } = prepare(runtime)
+  await service.loadMonitor(account, "today")
+  assert.equal((await service.loadMonitor(account, "today")).refreshState.kind, "fresh")
+  const cooled = await service.loadMonitor(account, "today", { force: true })
+  assert.equal(cooled.refreshState.kind, "cooldown")
+  runtime.state.now += 61_000
+  storage.acquireLease(account.id, 150_000, runtime.state.now)
+  assert.equal((await service.loadMonitor(account, "today", { force: true })).refreshState.kind, "busy")
+  assert.equal(runtime.state.calls.length, 1)
+})
+
+test("缺失历史不能绕过 API 限流或失败后的重试间隔", async () => {
+  for (const limited of [false, true]) {
+    const runtime = createRuntime()
+    const { account, storage, service } = prepare(runtime)
+    storage.writeDay(account, day("2026-10-14", BASE_TIME))
+    storage.markAttempt(account.id, BASE_TIME)
+    const retryAt = limited ? new Date(BASE_TIME + 300_000).toISOString() : undefined
+    storage.writeFailure(account, { kind: limited ? "rateLimit" : "network", message: "fixture", occurredAt: new Date(BASE_TIME).toISOString(), retryAt })
+    const result = await service.loadMonitor(account, "7d", { force: true })
+    assert.equal(runtime.state.calls.length, 0)
+    assert.equal(result.days.length, 1)
+    assert.equal(result.refreshState.kind, "cooldown")
+    assert.equal(result.refreshState.retryAt, retryAt ?? new Date(BASE_TIME + 60_000).toISOString())
+    assert.equal(result.failures[0].kind, limited ? "rateLimit" : "network")
+  }
+})

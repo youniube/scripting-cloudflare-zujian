@@ -1,6 +1,6 @@
 import { Button, Dialog, HStack, List, Navigation, NavigationStack, Picker, ProgressView, Script, Section, SecureField, Spacer, Text, TextField, Toggle, useEffect, useState, VStack, Widget } from "scripting"
 import { AccountConfig, cacheAge, failureFrom, formatNumber, MonitorView, Period, planLabel, rankWorkers, totalRequests, utcDate } from "./core"
-import { cachedView, loadMonitor } from "./service"
+import { cachedView, LoadOptions, loadMonitor } from "./service"
 import { deleteAccount, getSettings, saveAccount, selectAccount } from "./storage"
 import { DailyChart, failureLabel, FullQuota, palette, WorkerDetail } from "./views"
 
@@ -62,6 +62,16 @@ function AccountEditor({ original }: { original?: AccountConfig }) {
   </NavigationStack>
 }
 
+function refreshSummary(result: MonitorView): string {
+  if (result.refreshState?.kind === "cooldown") {
+    return `刷新冷却中 · 请在 ${new Date(result.refreshState.retryAt).toLocaleTimeString()} 后重试`
+  }
+  if (result.refreshState?.kind === "busy") return "已有查询正在进行 · 正在显示缓存，请稍后重试"
+  if (result.failures.length) return "刷新未完成 · 已保留可用缓存，请查看下方更新状态"
+  const covered = result.days.filter(day => day.requests !== null).length
+  return `${result.fromCache ? "缓存有效" : "刷新完成"} · 已取得 ${covered} / ${result.expectedDates.length} 天${covered < result.expectedDates.length ? " · 部分日期暂无数据" : ""}`
+}
+
 function MainView() {
   const dismiss = Navigation.useDismiss()
   const [settings, setSettings] = useState(getSettings())
@@ -69,34 +79,47 @@ function MainView() {
   const [view, setView] = useState<MonitorView | null>(null)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState("")
-  const [reload, setReload] = useState({ generation: 0, force: false, verify: false })
+  const [reload, setReload] = useState(0)
   const account = settings.accounts.find(item => item.id === settings.selectedId) ?? settings.accounts[0]
 
+  async function refresh(target: AccountConfig, selected: Period, options: LoadOptions = {}, cancelled = () => false) {
+    const cached = cachedView(target, selected)
+    setView(cached)
+    setBusy(true)
+    setProgress(`正在刷新${{ today: "今日", yesterday: "昨日", "7d": "近 7 天", "30d": "近 30 天" }[selected]}…`)
+    try {
+      const result = await loadMonitor(target, selected, {
+        ...options,
+        onProgress: (completed, total) => { if (!cancelled()) setProgress(`正在刷新 · 已读取 ${completed} / ${total} 个 UTC 日`) },
+      })
+      if (cancelled()) return
+      setView(result)
+      setProgress(refreshSummary(result))
+      if (!result.fromCache) Widget.reloadAll()
+    } catch (error) {
+      if (!cancelled()) {
+        const result = { ...cached, failures: [failureFrom(error)] }
+        setView(result)
+        setProgress(refreshSummary(result))
+      }
+    } finally { if (!cancelled()) setBusy(false) }
+  }
+  async function refreshNow(verify = false) {
+    if (!account || busy) return
+    await refresh(account, period, { force: !verify, verify })
+  }
   useEffect(() => {
     let cancelled = false
     if (!account) { setView(null); setBusy(false); return }
-    const cached = cachedView(account, period)
-    setView(cached)
-    setBusy(true)
-    setProgress("正在查询 Cloudflare…")
-    void loadMonitor(account, period, {
-      force: reload.force, verify: reload.verify,
-      onProgress: (completed, total) => { if (!cancelled) setProgress(`已读取 ${completed} / ${total} 个 UTC 日`) },
-    }).then(result => {
-      if (cancelled) return
-      setView(result)
-      if (!result.fromCache) Widget.reloadAll()
-    }).catch(error => {
-      if (!cancelled) setView({ ...cached, failures: [failureFrom(error)] })
-    }).finally(() => { if (!cancelled) { setBusy(false); setProgress("") } })
+    void refresh(account, period, {}, () => cancelled)
     return () => { cancelled = true }
-  }, [account?.id, account?.revision, period, reload.generation])
+  }, [account?.id, account?.revision, period, reload])
 
   async function edit(original?: AccountConfig) {
     await Navigation.present({ element: <AccountEditor original={original} /> })
     const updated = getSettings()
     setSettings(updated)
-    setReload(current => ({ generation: current.generation + 1, force: false, verify: false }))
+    setReload(current => current + 1)
   }
   async function remove(item: AccountConfig) {
     if (!await Dialog.confirm({ title: `删除「${item.displayName}」？`, message: "删除本机账号配置、Token 和统计缓存。Cloudflare 账号和 Worker 不受影响。", confirmLabel: "删除", cancelLabel: "取消" })) return
@@ -110,7 +133,7 @@ function MainView() {
     try {
       selectAccount(id)
       setSettings(getSettings())
-      setReload(current => ({ generation: current.generation + 1, force: false, verify: false }))
+      setReload(current => current + 1)
       Widget.reloadAll()
     } catch (error) { void Dialog.alert({ title: "切换失败", message: failureFrom(error).message }) }
   }
@@ -138,11 +161,11 @@ function MainView() {
           {settings.accounts.map(item => <Text key={item.id} tag={item.id}>{item.displayName}</Text>)}
         </Picker>
         <FullQuota account={account} day={todayDay} />
-        {busy ? <HStack><ProgressView /><Text font="caption">{progress}</Text></HStack> : <Text font="caption" foregroundStyle={palette.secondary}>{currentView?.fromCache ? "当前使用缓存 · 手动刷新最短间隔 1 分钟" : "已完成本次查询"}</Text>}
+        {busy ? <HStack><ProgressView /><Text font="caption">{progress}</Text></HStack> : <Text font="caption" foregroundStyle={palette.secondary}>{progress || "当前使用缓存 · 手动刷新最短间隔 1 分钟"}</Text>}
         <HStack>
-          <Button title="手动刷新" systemImage="arrow.clockwise" action={() => setReload(current => ({ generation: current.generation + 1, force: true, verify: false }))} disabled={busy} />
+          <Button title="手动刷新" systemImage="arrow.clockwise" buttonStyle="borderless" action={() => refreshNow()} disabled={busy} />
           <Spacer />
-          <Button title="验证 API" action={() => setReload(current => ({ generation: current.generation + 1, force: false, verify: true }))} disabled={busy} />
+          <Button title="验证 API" buttonStyle="borderless" action={() => refreshNow(true)} disabled={busy} />
         </HStack>
       </Section>}
 
@@ -155,10 +178,7 @@ function MainView() {
       </Section> : null}
 
       {account ? <Section header={<Text>历史 · UTC 自然日</Text>} footer={<Text>最近 7 / 30 天包含今日，今日尚未结束。空日期与未知数据不会填成零；历史统计仅对已取得数据求和。</Text>}>
-        <Picker title="统计时段" value={period} pickerStyle="menu" onChanged={value => {
-          setPeriod(value as Period)
-          setReload(current => ({ generation: current.generation + 1, force: false, verify: false }))
-        }} disabled={busy}>
+        <Picker title="统计时段" value={period} pickerStyle="menu" onChanged={value => setPeriod(value as Period)} disabled={busy}>
           <Text tag="today">今日</Text><Text tag="yesterday">昨日</Text><Text tag="7d">7 天</Text><Text tag="30d">30 天</Text>
         </Picker>
         <HStack>

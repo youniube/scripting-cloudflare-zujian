@@ -74,6 +74,8 @@ export interface MonitorView {
   failures: Failure[]
   fromCache: boolean
   previousDay?: DayData
+  /** 本轮未请求网络的原因，不写入日期缓存。 */
+  refreshState?: { kind: "fresh" | "busy" } | { kind: "cooldown"; retryAt: string }
 }
 
 export function utcDate(now: Date | number = Date.now()): string {

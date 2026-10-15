@@ -29,6 +29,7 @@ interface CommonView {
   frame?: Frame
   padding?: boolean | number | { horizontal?: number; vertical?: number; top?: number; bottom?: number; leading?: number; trailing?: number }
   disabled?: boolean
+  buttonStyle?: "automatic" | "bordered" | "borderedProminent" | "borderless" | "plain"
   lineLimit?: number
   minScaleFactor?: number
   tag?: string | number

@@ -51,6 +51,8 @@ GraphQL 查询使用 JSON 编码后的内联字符串值，避免猜测教程间
 
 ## 可见限制
 
+1.1.2 的刷新按钮直接执行当前时段查询；`Button.action` 与 `buttonStyle="borderless"` 按官方 [Button 样式](https://scriptingapp.github.io/guide/View%20Modifiers/buttonStyle) 核对。App 和 Widget 继续使用同一套请求与缓存；服务只增加本轮缓存/冷却/占用状态和前台缺失日期的补取调度，不修改 GraphQL 字段或统计口径。品牌单行按 [Text View Modifiers](https://scriptingapp.github.io/guide/View%20Modifiers/Text%20View%20Modifiers) 及 `frame` 文档实现；这些原生交互和排版仍需真机复验。
+
 1.1.1 针对用户截图中未呈现的历史分段选择器，改用带 `title="统计时段"`、`pickerStyle="menu"` 的官方 Picker 模式。`value` / `onChanged` 与四个 `Text.tag` 保留，按官方 [Picker 样式说明](https://scriptingapp.github.io/guide/View%20Modifiers/pickerStyle) 和文档归档 `views/controls/picker/index.tsx` 的 List 示例核对。仅修改入口 UI，历史补取和缓存逻辑保留；原生控件仍需真机复验。
 
 1.1.0 的 Widget 升级按用户指定的 [官方开发 Skill](https://github.com/ScriptingApp/scripting-app-development/blob/main/SKILL.md) 读取 Widget 与验证说明，并核对 Shapes 中的 `ShapeProps` / `StrokeStyle` 类型块、`Circle.trim`、`ZStack`、`rotationEffect`、动态渐变、`Image.systemName`、`monospacedDigit` 与 `kerning`。具体来源与真机核验步骤见 [UI-DESIGN.md](UI-DESIGN.md)。没有新增请求、认证方式或数据权限，完整手机 `.d.ts` 检查仍需连接 App。
