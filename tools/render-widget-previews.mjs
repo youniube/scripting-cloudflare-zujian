@@ -3,10 +3,10 @@ import fs from "node:fs"
 import { BASE_TIME, createRuntime, fixtureAccount } from "../tests/harness.mjs"
 
 const { WidgetView, widgetTheme } = createRuntime().load("views")
-const scenario = process.argv.includes("--stress") ? "stress" : process.argv.includes("--low") ? "low" : "normal"
+const scenario = process.argv.includes("--spacing") ? "spacing" : process.argv.includes("--stress") ? "stress" : process.argv.includes("--low") ? "low" : "normal"
 const dates = Array.from({ length: 7 }, (_, index) => `2026-10-${String(8 + index).padStart(2, "0")}`)
-const requests = scenario === "low" ? 2 : scenario === "stress" ? 95_000 : 42_680
-const counts = scenario === "low" ? [2] : scenario === "stress" ? [30_000, 25_000, 20_000, 10_000, 7_000, 3_000] : [26_410, 11_350, 4_920]
+const requests = scenario === "spacing" ? 3_511 : scenario === "low" ? 2 : scenario === "stress" ? 95_000 : 42_680
+const counts = scenario === "spacing" ? [1_880, 973, 658] : scenario === "low" ? [2] : scenario === "stress" ? [30_000, 25_000, 20_000, 10_000, 7_000, 3_000] : [26_410, 11_350, 4_920]
 const names = scenario === "stress" ? counts.map((_, index) => `a-long-worker-name-for-layout-verification-${index}`) : ["api-gateway", "image-proxy", "edge-cache"]
 const day = { version: 1, dateUTC: dates[6], fetchedAt: new Date(BASE_TIME - 120_000).toISOString(), requests, errors: scenario === "low" ? 0 : 13, workers: counts.map((count, index) => ({ name: names[index], requests: count, errors: 0 })), warnings: [] }
 const view = { account: fixtureAccount({ displayName: scenario === "stress" ? "非常长的 Cloudflare 账号名称" : "个人账号" }), period: "today", expectedDates: [day.dateUTC], days: [day], failures: [], missingDates: [], fromCache: false }
@@ -52,7 +52,7 @@ function render(node, mode, parent = "", depth = 0) {
     if (p.background.shape) style.push(`border-radius:${p.background.shape.cornerRadius}px`)
   }
   if (typeof p.padding === "number") style.push(`padding:${p.padding}px`)
-  else if (p.padding) style.push(`padding:${p.padding.vertical ?? 0}px ${p.padding.horizontal ?? 0}px`)
+  else if (p.padding) style.push(`padding:${p.padding.top ?? p.padding.vertical ?? 0}px ${p.padding.trailing ?? p.padding.horizontal ?? 0}px ${p.padding.bottom ?? p.padding.vertical ?? 0}px ${p.padding.leading ?? p.padding.horizontal ?? 0}px`)
   if (typeof p.font === "number") style.push(`font-size:${p.font}px`, "line-height:1.2")
   if (p.fontWeight) style.push(`font-weight:${{ semibold: 600, bold: 700, medium: 500 }[p.fontWeight] ?? 400}`)
   if (p.fontDesign === "monospaced") style.push('font-family:"Consolas",monospace')
@@ -79,7 +79,7 @@ function render(node, mode, parent = "", depth = 0) {
   if (type === "DateLabel") children = "12:00:00"
   return `<div data-native="${type}" style="${style.join(";")}">${children}</div>`
 }
-const sizes = scenario === "stress" ? [["systemSmall", "小号", 148, 148], ["systemMedium", "中号", 321, 148], ["systemLarge", "大号", 321, 329]] : [["systemSmall", "小号", 158, 158], ["systemMedium", "中号", 338, 158], ["systemLarge", "大号", 338, 354]]
+const sizes = scenario === "spacing" ? [["systemSmall", "小号", 158, 158], ["systemMedium", "中号", 338, 158]] : scenario === "stress" ? [["systemSmall", "小号", 148, 148], ["systemMedium", "中号", 321, 148], ["systemLarge", "大号", 321, 329]] : [["systemSmall", "小号", 158, 158], ["systemMedium", "中号", 338, 158], ["systemLarge", "大号", 338, 354]]
 let columns = ""
 for (const mode of ["dark", "light"]) {
   let cards = ""

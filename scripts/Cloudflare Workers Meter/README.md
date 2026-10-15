@@ -10,7 +10,9 @@
 
 用 iPhone 的 Safari 打开上面的链接，在官方分享页点击“在 Scripting 中打开”并确认导入。安装后运行脚本，添加 Cloudflare 只读账号，再添加中号 Scripting 桌面小组件。手机无需下载整个 GitHub 仓库或运行桌面命令。
 
-当前版本 **1.1.2 · Premium Dashboard** 采用 Cloudflare 橙色、深蓝黑渐变、原生额度环与 Worker 流量条；浅色主题跟随系统自动适配。小号突出请求数和剩余百分比，中号采用左右分区，大号增加错误统计与七日趋势。原有 API、认证、UTC 统计和账号管理逻辑保留。更新原脚本可避免创建新的凭据作用域。
+当前版本 **1.1.3 · Premium Dashboard** 采用 Cloudflare 橙色、深蓝黑渐变、原生额度环与 Worker 流量条；浅色主题跟随系统自动适配。小号突出请求数和剩余百分比，中号采用左右分区，大号增加错误统计与七日趋势。原有 API、认证、UTC 统计和账号管理逻辑保留。更新原脚本可避免创建新的凭据作用域。
+
+1.1.3 仅调整小号与中号的数字到进度信息区间距：常规尺寸为“圆环＋剩余额度”整行增加 10pt 顶部留白，数字、圆环样式、剩余文字、TOP 3 和大号布局保留。148pt 紧凑高度分别增加 6pt / 4pt，确保底部仍有空间。桌面视图树与浏览器测量已检查，原生显示需更新后在 Scripting 预览确认。
 
 1.1.2 的“手动刷新”直接启动当前时段查询，并保留完成、失败、冷却截止时间或正在占用的反馈。刚刷新今日后可补取未缓存的历史日期，不重复刷新已有日期，仍遵守 API 限流与失败后的重试间隔。小号 `CLOUDFLARE` 保留独立宽度并限定单行，避免最后一个字母换行。历史入口继续使用 **“统计时段”菜单行**；控件与小号标题需要更新后在 iPhone 复验。
 
@@ -19,6 +21,7 @@
 先研究了四个指定开源仓库的截图及相关实现，构思 A 科技仪表盘、B Apple 极简、C GitHub 数据统计三套方案，最终实现 A + C 融合。[设计研究与原生核验步骤](https://github.com/youniube/scripting-cloudflare-zujian/blob/main/docs/UI-DESIGN.md)。
 
 - [A / B / C 设计方案对比](https://raw.githubusercontent.com/youniube/scripting-cloudflare-zujian/main/docs/widget-designs.png)
+- [小号 / 中号间距调整前后与深浅色对比](https://raw.githubusercontent.com/youniube/scripting-cloudflare-zujian/main/docs/widget-spacing-comparison.png)
 - [三尺寸浅深色布局参考](https://raw.githubusercontent.com/youniube/scripting-cloudflare-zujian/main/docs/widget-preview.png)
 - [小尺寸 / 长名称 / 95% 告警参考](https://raw.githubusercontent.com/youniube/scripting-cloudflare-zujian/main/docs/widget-preview-stress.png)
 - [两次请求 / 历史缺失参考](https://raw.githubusercontent.com/youniube/scripting-cloudflare-zujian/main/docs/widget-preview-low.png)
@@ -242,6 +245,7 @@ node tools/render-design-concepts.mjs
 node tools/render-widget-previews.mjs
 node tools/render-widget-previews.mjs --stress
 node tools/render-widget-previews.mjs --low
+node tools/render-widget-previews.mjs --spacing
 ```
 
 连接官方 CLI 并得到本机 App 的 `dts/` 后，可做完整声明诊断：

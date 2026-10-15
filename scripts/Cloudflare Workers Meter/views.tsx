@@ -116,6 +116,8 @@ export function widgetLayout(family: string, displaySize?: DisplaySize, workerCo
   const rows = Math.max(1, Math.min(workerCount, rankLimit))
   return {
     inset, gap: small ? 3 : large ? 5 : 6, rankLimit,
+    // Compact 148pt widgets keep footer clearance; regular Small/Medium get 10pt.
+    quotaTopPadding: large ? 0 : height < 155 ? small ? 6 : 4 : 10,
     chartHeight: large ? Math.max(28, Math.min(112, available - rows * 22)) : 0,
     ringSize: small ? height < 155 ? 38 : 42 : large ? 64 : 36,
   }
@@ -246,7 +248,7 @@ export function WidgetView({ view, family, dates, history, displaySize }: { view
       {small ? <VStack alignment="leading" spacing={3}>
         <Text font={9} foregroundStyle={widgetTheme.secondary} lineLimit={1} minScaleFactor={0.75}>{dayTitle(day).replace("今日调用", "今日请求")}</Text>
         <Text font={28} fontWeight="bold" fontDesign="rounded" monospacedDigit lineLimit={1} minScaleFactor={0.5}>{formatNumber(day?.requests)}</Text>
-        <HStack spacing={9}>
+        <HStack spacing={9} padding={{ top: layout.quotaTopPadding }}>
           <QuotaRing account={account} day={day} size={layout.ringSize} />
           <VStack alignment="leading" spacing={2} frame={{ minWidth: 0, maxWidth: "infinity", alignment: "leading" }}>
             <Text font={8} foregroundStyle={widgetTheme.secondary}>{q.limit !== null ? "估算剩余" : account.plan === "paid" ? "付费计划" : "额度未确认"}</Text>
@@ -268,7 +270,7 @@ export function WidgetView({ view, family, dates, history, displaySize }: { view
         <VStack alignment="leading" spacing={2} frame={{ minWidth: 0, maxWidth: "infinity", alignment: "leading" }}>
           <Text font={9} foregroundStyle={widgetTheme.secondary} lineLimit={1}>{dayTitle(day).replace("今日调用", "今日请求")}</Text>
           <Text font={28} fontWeight="bold" fontDesign="rounded" monospacedDigit lineLimit={1} minScaleFactor={0.5}>{formatNumber(day?.requests)}</Text>
-          <HStack spacing={7}>
+          <HStack spacing={7} padding={{ top: layout.quotaTopPadding }}>
             <QuotaRing account={account} day={day} size={layout.ringSize} />
             <WidgetRemaining account={account} day={day} />
           </HStack>
