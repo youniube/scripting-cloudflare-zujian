@@ -32,6 +32,8 @@ interface CommonView {
   buttonStyle?: "automatic" | "bordered" | "borderedProminent" | "borderless" | "plain"
   lineLimit?: number
   minScaleFactor?: number
+  // 官方 View Modifiers / Fixed Size 的声明；仍只是离线检查合约。
+  fixedSize?: boolean | { horizontal: boolean; vertical: boolean }
   tag?: string | number
 }
 type Component<P = CommonView> = (props: P) => JSX.Element

@@ -10,11 +10,13 @@
 
 用 iPhone 的 Safari 打开上面的链接，在官方分享页点击“在 Scripting 中打开”并确认导入。安装后运行脚本，添加 Cloudflare 只读账号，再添加中号 Scripting 桌面小组件。手机无需下载整个 GitHub 仓库或运行桌面命令。
 
-当前版本 **1.3.0 · 新增融合监控**，提供融合版、Workers 独立版、Workers AI 独立版三种模式。原有两版的界面、额度计算和桌面参数保持不变。更新原脚本可保留原来的账号和 Keychain 凭据。
+当前版本 **1.3.1 · 修正融合版原生排版**，提供融合版、Workers 独立版、Workers AI 独立版三种模式。原有两版的界面、额度计算和桌面参数保持不变。更新原脚本可保留原来的账号和 Keychain 凭据。
+
+1.3.1 根据用户提供的 1.3.0 真机反馈，修正融合版余额/排行文字过度缩小、模型名与数值拥挤及底部留白过大的布局约束：正文数据行保留明确高度，余额与排名分别保留数值列，长名称省略；小号/中号移除垂直弹性空白，大号根据排名行数分配图表高度。主数字与圆环保持原样。没有修改 Cloudflare 请求、缓存、统计或另外两个独立版。修订后的 iPhone 显示仍需真机复验，不能用浏览器参考代替。
 
 ## 融合版怎么用（1.3.0 新增）
 
-1. 更新原脚本，确认“远程资源”的版本为 **1.3.0**；URL 使用上方的 `main/releases/cloudflare-workers-meter.zip`。
+1. 更新原脚本，确认“远程资源”的版本为 **1.3.1**；URL 使用上方的 `main/releases/cloudflare-workers-meter.zip`。
 2. 关闭旧管理页面，重新运行脚本。“监控项目”依次为 **融合监控 · Workers + AI → Workers 请求额度 → Workers AI · Neurons**，默认进入融合版。
 3. 融合页面默认读取近 7 个 UTC 日的两套统计，并分别显示今日摘要、独立趋势和完整 Worker / AI 模型排名。首次进入会沿用原只读 Token 验证缺少的能力；可点“刷新融合数据”或“验证两项 API”。
 4. 添加一个新的 Scripting 桌面小组件，选择本脚本，将 **Parameter 填成 `fusion`**。需要固定账号时，复制融合模式下账号管理中的完整参数 `fusion:本地账号标识`。
@@ -28,11 +30,11 @@
 
 App 内切换监控项目只切换管理页和预览默认项，**不会改变已有桌面小组件的类型**。因此可以同时保留原有两版，再新增融合版。
 
-融合小号保留今日 Workers 主数字、额度环与估算剩余，增加 AI 用量和参考比例；`N` 表示 Neurons，保留最多三位小数。中号保留右侧 Worker TOP 3，底部增加独立 AI 摘要。大号将两项摘要、各自的七日趋势与排名放在同一仪表盘，Workers 使用橙色，AI 使用蓝色；图表各用独立刻度，不将请求数与 Neurons 相加或相互换算。数字列和圆环分别保留宽度，长数字在自己的列内缩放。
+融合小号保留今日 Workers 主数字、额度环与估算剩余，增加 AI 用量和参考比例；`N` 表示 Neurons，通常保留最多三位小数，超长的小号摘要/排名使用紧凑缩写，App 内可查看完整精度。中号保留右侧 Worker TOP 3，底部增加独立 AI 摘要。大号将两项摘要、各自的七日趋势与排名放在同一仪表盘，Workers 使用橙色，AI 使用蓝色；图表各用独立刻度，不将请求数与 Neurons 相加或相互换算。数字列和圆环分别保留宽度，长数字在自己的列内缩放。
 
 融合层复用现有查询、Token、缓存与分页逻辑，两项依次查询以遵守共享账号锁，各自保留成功时间与失败状态。某一项无权限或查询失败不会隐藏另一项的数据。**桌面执行优先更新两项今日摘要；大号的历史读取 App 已取得的日期缓存。** 打开融合管理页默认补取近 7 日，也可选 30 日；未取得日显示 `—`。小号、中号始终显示今日额度，管理页选择 7 / 30 日不会把多日合计当成今日额度。
 
-实际 TSX 视图树的桌面参考：[三尺寸与深浅色](https://youniube.github.io/scripting-cloudflare-zujian/widget-fusion-native-preview.html)、[95% 告警与紧凑尺寸](https://youniube.github.io/scripting-cloudflare-zujian/widget-fusion-native-preview-stress.html)、[AI 未提供 Neurons](https://youniube.github.io/scripting-cloudflare-zujian/widget-fusion-native-preview-unknown.html)、[付费 Workers](https://youniube.github.io/scripting-cloudflare-zujian/widget-fusion-native-preview-paid.html)。这些是带模拟数据的浏览器近似排版，不是 iPhone 截图；Scripting 安装包只包含原生 TSX，不包含 HTML、图片或演示数据。
+实际 TSX 视图树的桌面参考：[三尺寸与深浅色](https://youniube.github.io/scripting-cloudflare-zujian/widget-fusion-native-preview.html)、[95% 告警与紧凑尺寸](https://youniube.github.io/scripting-cloudflare-zujian/widget-fusion-native-preview-stress.html)、[AI 未提供 Neurons](https://youniube.github.io/scripting-cloudflare-zujian/widget-fusion-native-preview-unknown.html)、[付费 Workers](https://youniube.github.io/scripting-cloudflare-zujian/widget-fusion-native-preview-paid.html)、[长模型名称与单日 AI 数据场景](https://youniube.github.io/scripting-cloudflare-zujian/widget-fusion-native-preview-device-case.html)。这些是带模拟数据的浏览器近似排版，不是 iPhone 截图；Scripting 安装包只包含原生 TSX，不包含 HTML、图片或演示数据。
 
 ## Workers AI 怎么用（1.2.0 新增）
 

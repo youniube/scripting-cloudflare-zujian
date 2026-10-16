@@ -2,12 +2,14 @@
 
 执行环境：Windows PowerShell、Node.js 桌面测试运行器、TypeScript 5.9.3、Python 标准库。项目位于 `F:\codex\workers-meter-3ded5d9e`。
 
+当前 1.3.1 的真机反馈、原生约束修正与新增复验步骤见 [融合版 1.3.1 排版修正](FUSION-1.3.1.md)。下方各版本的桌面检查结果均不代表已通过修订后的 iPhone 渲染验证。
+
 ## 已执行
 
 | 检查 | 结果 | 实际覆盖范围 |
 | --- | --- | --- |
 | `npm run check` | 通过 | 严格 TypeScript / TSX 与依据官方文档整理的最小 API 合约；不等同于完整 Scripting 官方声明检查 |
-| `npm test` | 84 / 84 通过 | 原有 73 项与新增 11 项融合模式菜单、参数、串行服务、失败隔离、取消、手动刷新及三尺寸入口检查；无真实 API 或 iOS 渲染 |
+| `npm test` | 86 / 86 通过 | 原有 84 项与新增 2 项融合版可读数据行、独立数值列及三尺寸垂直空间分配回归；无真实 API 或 iOS 渲染 |
 | `npm run package` | 通过，13 个项目文件 | ZIP CRC、精确文件内容、目录元数据、文件白名单、测试凭据未进入包；大小和 SHA-256 记录在 release manifest；不等同于 App 导入实测 |
 | 原生源码范围扫描 | 通过 | 11 个源文件没有 Node/DOM/React Native 依赖、日志输出或额外采样倍率 |
 | `node tools/check-device-types.mjs` | 提示缺少手机声明并停止，符合预期 | 确认不会拿手写合约替代完整官方类型检查；实际完整检查尚未执行 |

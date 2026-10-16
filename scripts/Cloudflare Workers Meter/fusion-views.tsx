@@ -1,6 +1,6 @@
 import { Button, Circle, DateLabel, HStack, Picker, ProgressView, RoundedRectangle, Section, Spacer, Text, useEffect, useState, VStack, Widget, ZStack } from "scripting"
 import { AIDay, AIModel, aiQuota, formatNeurons, rankAIModels } from "./ai"
-import { AccountConfig, cacheAge, DayData, failureFrom, formatNumber, fraction, nextReset, percent, Period, quota, rankWorkers, totalRequests, utcDate } from "./core"
+import { AccountConfig, cacheAge, compactNumber, DayData, failureFrom, formatNumber, fraction, nextReset, percent, Period, quota, rankWorkers, totalRequests, utcDate } from "./core"
 import { cachedFusion, FusionView, loadFusion } from "./fusion"
 import { BrandHeader, DailyChart, displayedDay, failureLabel, palette, QuotaRing, widgetTheme, WorkerDetail } from "./views"
 
@@ -12,15 +12,20 @@ function aiDay(view: FusionView) { return view.ai.days.find(day => day.dateUTC =
 function dayLabel(day?: { dateUTC: string }, ai = false) { return day && day.dateUTC !== utcDate() ? `${day.dateUTC.slice(5)} 缓存 · ${ai ? "Neurons" : "请求"}` : ai ? "WORKERS AI · NEURONS" : "今日请求 · 估算" }
 function aiCoverage(view: FusionView) { return view.ai.days.filter(day => day.neurons !== null).length }
 
-export function fusionLayout(family: string, size?: { width: number; height: number }) {
+export function fusionLayout(family: string, size?: { width: number; height: number }, rankCount = 3) {
   const small = family === "systemSmall", large = family === "systemLarge"
   const width = size?.width ?? (small ? 158 : 338), height = size?.height ?? (large ? 354 : 158)
   const compact = height < (large ? 345 : 155), inset = large && !compact ? 14 : 12
   const content = Math.max(100, width - inset * 2), columnGap = large ? 14 : 12
-  return { inset, content, compact, gap: large ? 5 : compact ? 2 : 3,
+  // 先保护正文行高，再把大号剩余高度交给图表；不以垂直 Spacer 填满底部。
+  const gap = large ? 5 : small ? compact ? 3 : 5 : compact ? 2 : 4
+  const summaryHeight = large ? 77 : small ? 65 : 68
+  const rows = Math.max(1, Math.min(3, rankCount)), rankHeight = 15 + rows * 19 + (rows - 1) * 4
+  const trendHeight = large ? Math.max(73, height - inset * 2 - 13 - summaryHeight - 20 - rankHeight - 11 - gap * 5) : 0
+  return { inset, content, compact, gap, summaryHeight, rankHeight, trendHeight,
     columnGap, left: large ? (content - columnGap) / 2 : small ? content : Math.floor((content - columnGap) * 0.46),
     ring: small ? 36 : large ? 35 : 33, numberGap: small ? 10 : large ? 7 : 8,
-    chartHeight: compact ? 40 : 46 }
+    chartHeight: Math.max(20, trendHeight - 53) }
 }
 function AIRing({ used, size }: { used: number | null | undefined; size: number }) {
   const q = aiQuota(used), ratio = q.ratio === null ? null : Math.min(1, Math.max(0, q.ratio)), diameter = size - 5.5
@@ -37,39 +42,47 @@ function AIRing({ used, size }: { used: number | null | undefined; size: number 
 function MetricNumber({ value, width, ring, gap, ai = false, day, account }: { value: string; width: number; ring: number; gap: number; ai?: boolean; day?: DayData | AIDay; account: AccountConfig }) {
   const numberWidth = Math.max(30, width - ring - gap)
   return <HStack spacing={gap} frame={{ width, height: 36 }}>
-    <Text font={28} fontWeight="bold" fontDesign="rounded" monospacedDigit lineLimit={1} minScaleFactor={0.4} frame={{ width: numberWidth, alignment: "leading" }}>{value}</Text>
+    <Text font={28} fontWeight="bold" fontDesign="rounded" monospacedDigit lineLimit={1} minScaleFactor={0.4} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: numberWidth, height: 36, alignment: "leading" }}>{value}</Text>
     {ai ? <AIRing used={(day as AIDay | undefined)?.neurons} size={ring} /> : <QuotaRing account={account} day={day as DayData | undefined} size={ring} />}
   </HStack>
 }
 function WorkersRemaining({ account, day, width }: { account: AccountConfig; day?: DayData; width: number }) {
   const q = quota(account, day?.requests ?? null)
-  return <HStack spacing={4} frame={{ width }}>
-    <Text font={8} foregroundStyle={widgetTheme.secondary} lineLimit={1} minScaleFactor={0.7}>{q.limit === null ? "套餐" : account.plan === "custom" ? "距日阈值" : "估算剩余"}</Text>
-    <Text font={10} fontWeight="semibold" fontDesign="rounded" monospacedDigit lineLimit={1} minScaleFactor={0.5} frame={{ minWidth: 0, maxWidth: "infinity", alignment: "trailing" }}>{q.limit === null ? account.plan === "paid" ? "Paid · 无日额度" : "未确认" : formatNumber(q.remaining)}</Text>
+  return <HStack spacing={4} frame={{ width, height: 14 }}>
+    <Text font={9} foregroundStyle={widgetTheme.secondary} lineLimit={1} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: 38, height: 14, alignment: "leading" }}>{q.limit === null ? "套餐" : account.plan === "custom" ? "距日阈值" : "估算剩余"}</Text>
+    <Text font={11} fontWeight="semibold" fontDesign="rounded" monospacedDigit lineLimit={1} minScaleFactor={0.9} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: width - 42, height: 14, alignment: "trailing" }}>{q.limit === null ? account.plan === "paid" ? "Paid · 无日额度" : "未确认" : formatNumber(q.remaining)}</Text>
   </HStack>
 }
-function AIStrip({ day, small, compact }: { day?: AIDay; small: boolean; compact: boolean }) {
+function AIStrip({ day, small, compact, width }: { day?: AIDay; small: boolean; compact: boolean; width: number }) {
   const q = aiQuota(day?.neurons)
-  const label = day && day.dateUTC !== utcDate() ? `${day.dateUTC.slice(5)} AI 缓存` : small ? "AI · N" : "WORKERS AI"
-  return <VStack alignment="leading" spacing={3} padding={{ horizontal: 6, vertical: compact ? 4 : 5 }} background={panel}>
-    <HStack spacing={4}>
-      <Text font={small ? 7 : 7.5} fontWeight="semibold" foregroundStyle={aiColor} lineLimit={1} minScaleFactor={0.75}>{label}</Text>
-      <Text font={small ? 10 : 11} fontWeight="bold" fontDesign="rounded" monospacedDigit lineLimit={1} minScaleFactor={0.5} frame={{ minWidth: 0, maxWidth: "infinity", alignment: "leading" }}>{formatNeurons(day?.neurons)}{small ? "" : " N"}</Text>
-      <Text font={7.5} foregroundStyle={widgetTheme.secondary} lineLimit={1}>{percent(q.ratio)}</Text>
-      {!small ? <Text font={7.5} foregroundStyle={widgetTheme.secondary} lineLimit={1} minScaleFactor={0.65}>参考余 {formatNeurons(q.remaining)} N</Text> : null}
+  const old = day && day.dateUTC !== utcDate(), label = old ? "AI 缓存" : small ? "AI · N" : "WORKERS AI"
+  const labelWidth = small ? old ? 30 : 22 : 55, ratioWidth = small ? 25 : 28, remainingWidth = small ? 0 : Math.round((width - 12) * 0.35)
+  const valueWidth = width - 12 - labelWidth - ratioWidth - remainingWidth - (small ? 8 : 12)
+  const value = formatNeurons(day?.neurons)
+  return <VStack alignment="leading" spacing={3} padding={{ horizontal: 6, vertical: compact ? 3 : 5 }} background={panel}>
+    <HStack spacing={4} frame={{ width: width - 12, height: 14 }}>
+      <Text font={7.5} fontWeight="semibold" foregroundStyle={aiColor} lineLimit={1} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: labelWidth, height: 14, alignment: "leading" }}>{label}</Text>
+      <Text font={11} fontWeight="bold" fontDesign="rounded" monospacedDigit lineLimit={1} minScaleFactor={0.85} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: valueWidth, height: 14, alignment: "leading" }}>{small && value.length > 9 ? compactNumber(day?.neurons) : value}{small ? "" : " N"}</Text>
+      <Text font={8} foregroundStyle={widgetTheme.secondary} lineLimit={1} minScaleFactor={0.9} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: ratioWidth, height: 14, alignment: "trailing" }}>{percent(q.ratio)}</Text>
+      {!small ? <Text font={8} foregroundStyle={widgetTheme.secondary} lineLimit={1} minScaleFactor={0.9} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: remainingWidth, height: 14, alignment: "trailing" }}>参考余 {formatNeurons(q.remaining)} N</Text> : null}
     </HStack>
     <ProgressView value={Math.min(1, Math.max(0, q.ratio ?? 0))} total={1} progressViewStyle="linear" tint={tone(q.level, true)} frame={{ height: 3 }} />
   </VStack>
 }
-function Rankings({ items, total, ai = false }: { items: { name: string; value: number | null }[]; total: number | null; ai?: boolean }) {
-  return <VStack alignment="leading" spacing={3}>
-    {items.length ? items.slice(0, 3).map(item => <VStack key={item.name} alignment="leading" spacing={1}>
-      <HStack spacing={4}>
-        <Text font={9.5} lineLimit={1} minScaleFactor={0.6} frame={{ minWidth: 0, maxWidth: "infinity", alignment: "leading" }}>{item.name.replace(/^@cf\//, "")}</Text>
-        <Text font={9} fontWeight="semibold" monospacedDigit lineLimit={1} minScaleFactor={0.5}>{ai ? formatNeurons(item.value) : formatNumber(item.value)}</Text>
-      </HStack>
-      <ProgressView value={item.value !== null && total !== null && total > 0 ? Math.min(1, Math.max(0, item.value / total)) : 0} total={1} progressViewStyle="linear" tint={ai ? aiFill : widgetTheme.accent} frame={{ height: 2 }} />
-    </VStack>) : <Text font={8} foregroundStyle={widgetTheme.secondary} lineLimit={2}>{ai ? "暂无模型记录" : "暂无 Worker 记录"}</Text>}
+function Rankings({ items, total, width, ai = false, large = false }: { items: { name: string; value: number | null }[]; total: number | null; width: number; ai?: boolean; large?: boolean }) {
+  return <VStack alignment="leading" spacing={large ? 4 : 2}>
+    {items.length ? items.slice(0, 3).map(item => {
+      const exact = ai ? formatNeurons(item.value) : formatNumber(item.value)
+      const value = exact.length > 9 ? compactNumber(item.value) : exact
+      const valueWidth = Math.min(width * 0.45, Math.max(35, value.length * 7.4))
+      return <VStack key={item.name} alignment="leading" spacing={large ? 2 : 1}>
+        <HStack spacing={6} frame={{ width, height: 14 }}>
+          <Text font={10.5} lineLimit={1} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: width - valueWidth - 6, height: 14, alignment: "leading" }}>{ai ? item.name.replace(/^@cf\/[^/]+\//, "") : item.name}</Text>
+          <Text font={10.5} fontWeight="semibold" monospacedDigit lineLimit={1} minScaleFactor={0.9} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: valueWidth, height: 14, alignment: "trailing" }}>{value}</Text>
+        </HStack>
+        <ProgressView value={item.value !== null && total !== null && total > 0 ? Math.min(1, Math.max(0, item.value / total)) : 0} total={1} progressViewStyle="linear" tint={ai ? aiFill : widgetTheme.accent} frame={{ height: large ? 3 : 2 }} />
+      </VStack>
+    }) : <Text font={9} foregroundStyle={widgetTheme.secondary} lineLimit={2} fixedSize={{ horizontal: false, vertical: true }}>{ai ? "暂无模型记录" : "暂无 Worker 记录"}</Text>}
   </VStack>
 }
 function MiniTrend({ dates, values, height, ai = false }: { dates: string[]; values: (number | null)[]; height: number; ai?: boolean }) {
@@ -79,78 +92,80 @@ function MiniTrend({ dates, values, height, ai = false }: { dates: string[]; val
       <VStack spacing={0} frame={{ height, alignment: "bottom" }}>
         {values[i] === null ? <Text font={7} foregroundStyle={widgetTheme.secondary}>—</Text> : values[i] > 0 ? <RoundedRectangle cornerRadius={2} fill={ai ? aiFill : widgetTheme.accent} frame={{ width: 8, height: height * (values[i] as number) / maximum }} /> : null}
       </VStack>
-      <Text font={6.5} foregroundStyle={widgetTheme.secondary} lineLimit={1}>{date.slice(5).replace("-", "/")}</Text>
+      <Text font={6.5} foregroundStyle={widgetTheme.secondary} lineLimit={1} fixedSize={{ horizontal: false, vertical: true }} frame={{ height: 8 }}>{date.slice(5).replace("-", "/")}</Text>
     </VStack>)}
   </HStack>
 }
-function Footer({ view, day, ai, large }: { view: FusionView; day?: DayData; ai?: AIDay; large: boolean }) {
+function Footer({ view, day, ai, large, width }: { view: FusionView; day?: DayData; ai?: AIDay; large: boolean; width: number }) {
   const wq = quota(view.account, day?.requests ?? null), aq = aiQuota(ai?.neurons)
   const wf = view.workers.failures[0], af = view.ai.failures[0]
   const critical = [wq.level, aq.level].includes("critical"), warning = [wq.level, aq.level].includes("warning")
   const old = [day, ai].some(item => item && item.dateUTC !== utcDate())
-  const status = wf ? "W · " + failureLabel(wf) : af ? "AI · " + failureLabel(af) : old ? "跨日缓存 · 待更新" : !day || day.requests === null ? "Workers 未取得" : ai?.neurons == null ? "AI Neurons 未取得" : day.warnings.length || ai.warnings.length ? "统计有缺口 · 估算" : critical ? "用量 ≥95% · 估算" : warning ? "用量 ≥80% · 估算" : "双用量 · 估算"
+  const oldDate = [day, ai].filter((item): item is DayData | AIDay => !!item && item.dateUTC !== utcDate()).map(item => item.dateUTC).sort()[0]
+  const status = wf ? "W · " + failureLabel(wf) : af ? "AI · " + failureLabel(af) : old ? `${oldDate?.slice(5)} 跨日缓存` : !day || day.requests === null ? "Workers 未取得" : ai?.neurons == null ? "AI Neurons 未取得" : day.warnings.length || ai.warnings.length ? "统计有缺口 · 估算" : critical ? "用量 ≥95% · 估算" : warning ? "用量 ≥80% · 估算" : "双用量 · 估算"
   const color = wf || af || old ? widgetTheme.warning : critical ? widgetTheme.critical : warning ? widgetTheme.warning : widgetTheme.secondary
   const stamps = [day, ai].filter((item): item is DayData | AIDay => !!item).map(item => item.fetchedAt).sort()
   const stamp = stamps[0]
-  return <HStack spacing={3}>
+  const timeWidth = large ? 96 : 37
+  return <HStack spacing={3} frame={{ width, height: 11 }}>
     <Circle fill={color} frame={{ width: 3, height: 3 }} />
-    <Text font={7.5} foregroundStyle={color} lineLimit={1} minScaleFactor={0.65} frame={{ minWidth: 0, maxWidth: "infinity", alignment: "leading" }}>{status}</Text>
-    <Text font={7.5} foregroundStyle={widgetTheme.secondary} lineLimit={1} minScaleFactor={0.65}>{stamp ? (large ? `UTC ${stamp.slice(11, 16)} · ` : "") + cacheAge(stamp) : "请打开 App"}</Text>
+    <Text font={8} foregroundStyle={color} lineLimit={1} minScaleFactor={0.9} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: width - timeWidth - 9, height: 11, alignment: "leading" }}>{status}</Text>
+    <Text font={8} foregroundStyle={widgetTheme.secondary} lineLimit={1} minScaleFactor={0.9} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: timeWidth, height: 11, alignment: "trailing" }}>{stamp ? (large ? `UTC ${stamp.slice(11, 16)} · ` : "") + cacheAge(stamp) : "请打开 App"}</Text>
   </HStack>
 }
 export function FusionWidgetView({ view, today, family, displaySize }: { view: FusionView; today?: FusionView; family: string; displaySize?: { width: number; height: number } }) {
   const current = today ?? view, account = view.account, day = displayedDay(current.workers), ai = aiDay(current)
   const wq = quota(account, day?.requests ?? null), aq = aiQuota(ai?.neurons)
-  const small = family === "systemSmall", large = family === "systemLarge", layout = fusionLayout(family, displaySize)
+  const small = family === "systemSmall", large = family === "systemLarge"
   const workers = rankWorkers(day ? [day] : []).map(item => ({ name: item.name, value: item.requests })), models = rankAIModels(ai ? [ai] : []).map(item => ({ name: item.name, value: item.neurons }))
+  const layout = fusionLayout(family, displaySize, Math.max(workers.length, models.length))
   const remainingLabel = wq.limit === null ? account.plan === "paid" ? "Paid · 无免费日额度" : "套餐未确认 · 仅统计用量" : `${account.plan === "custom" ? "日阈值" : "Free 日额度"} ${formatNumber(wq.limit)}`
   return <VStack spacing={0} widgetBackground={widgetTheme.background} foregroundStyle={widgetTheme.primary} frame={{ maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }}>
     <VStack alignment="leading" spacing={layout.gap} padding={layout.inset} frame={{ minWidth: 0, maxWidth: "infinity", maxHeight: "infinity", alignment: "topLeading" }}>
-      <BrandHeader account={account} small={small} />
-      <HStack alignment="top" spacing={layout.columnGap}>
-        <VStack alignment="leading" spacing={2} frame={{ width: layout.left }}>
-          <Text font={large ? 8 : 9} fontWeight={large ? "semibold" : "regular"} foregroundStyle={widgetTheme.secondary} lineLimit={1} minScaleFactor={0.8}>{large ? dayLabel(day).replace("今日请求 · 估算", "WORKERS · 今日请求") : dayLabel(day)}</Text>
+      <VStack alignment="leading" spacing={0} frame={{ width: layout.content, height: 13 }}><BrandHeader account={account} small={small} /></VStack>
+      <HStack alignment="top" spacing={layout.columnGap} frame={{ height: layout.summaryHeight, alignment: "topLeading" }}>
+        <VStack alignment="leading" spacing={2} frame={{ width: layout.left, height: layout.summaryHeight, alignment: "topLeading" }}>
+          <Text font={large ? 8 : 9} fontWeight={large ? "semibold" : "regular"} foregroundStyle={widgetTheme.secondary} lineLimit={1} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: layout.left, height: 11, alignment: "leading" }}>{large ? dayLabel(day).replace("今日请求 · 估算", "WORKERS · 今日请求") : dayLabel(day)}</Text>
           <MetricNumber value={formatNumber(day?.requests)} width={layout.left} ring={layout.ring} gap={layout.numberGap} account={account} day={day} />
           <WorkersRemaining account={account} day={day} width={layout.left} />
-          {large ? <Text font={7} foregroundStyle={widgetTheme.secondary} lineLimit={1} minScaleFactor={0.7}>{remainingLabel}</Text> : null}
+          {large ? <Text font={7.5} foregroundStyle={widgetTheme.secondary} lineLimit={1} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: layout.left, height: 10, alignment: "leading" }}>{remainingLabel}</Text> : null}
         </VStack>
-        {large ? <VStack alignment="leading" spacing={2} frame={{ width: layout.left }}>
-          <Text font={8} fontWeight="semibold" foregroundStyle={aiColor} lineLimit={1} minScaleFactor={0.8}>{dayLabel(ai, true)}</Text>
+        {large ? <VStack alignment="leading" spacing={2} frame={{ width: layout.left, height: layout.summaryHeight, alignment: "topLeading" }}>
+          <Text font={8} fontWeight="semibold" foregroundStyle={aiColor} lineLimit={1} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: layout.left, height: 11, alignment: "leading" }}>{dayLabel(ai, true)}</Text>
           <MetricNumber value={formatNeurons(ai?.neurons)} width={layout.left} ring={layout.ring} gap={layout.numberGap} account={account} day={ai} ai />
-          <Text font={9} fontWeight="semibold" lineLimit={1} minScaleFactor={0.6}>参考剩余 {formatNeurons(aq.remaining)} N</Text>
-          <Text font={7} foregroundStyle={widgetTheme.secondary} lineLimit={1}>日免费量参考 10,000 N</Text>
+          <Text font={10} fontWeight="semibold" lineLimit={1} minScaleFactor={0.9} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: layout.left, height: 14, alignment: "leading" }}>参考剩余 {formatNeurons(aq.remaining)} N</Text>
+          <Text font={7.5} foregroundStyle={widgetTheme.secondary} lineLimit={1} fixedSize={{ horizontal: false, vertical: true }} frame={{ width: layout.left, height: 10, alignment: "leading" }}>日免费量参考 10,000 N</Text>
         </VStack> : !small ? <VStack alignment="leading" spacing={3} frame={{ width: layout.content - layout.left - layout.columnGap }}>
-          <Text font={8} fontWeight="semibold" foregroundStyle={widgetTheme.secondary}>{day && day.dateUTC !== utcDate() ? "缓存日" : "今日"} WORKER · TOP 3</Text>
-          <Rankings items={workers} total={day?.requests ?? null} />
+          <Text font={8} fontWeight="semibold" foregroundStyle={widgetTheme.secondary} lineLimit={1} fixedSize={{ horizontal: false, vertical: true }} frame={{ height: 10, alignment: "leading" }}>{day && day.dateUTC !== utcDate() ? "缓存日" : "今日"} WORKER · TOP 3</Text>
+          <Rankings items={workers} total={day?.requests ?? null} width={layout.content - layout.left - layout.columnGap} />
         </VStack> : null}
       </HStack>
-      {!large ? <AIStrip day={ai} small={small} compact={layout.compact} /> : null}
-      {large ? <HStack spacing={5} padding={5} background={panel}>
-        <Text font={7.5} foregroundStyle={widgetTheme.secondary} lineLimit={1} minScaleFactor={0.7}>Workers 错误 {formatNumber(day?.errors)}</Text>
-        <Text font={7.5} foregroundStyle={widgetTheme.secondary} lineLimit={1} minScaleFactor={0.7}>错误率 {day?.errors == null || day.requests === null ? "—" : fraction(day.errors, day.requests)}</Text>
+      {!large ? <AIStrip day={ai} small={small} compact={layout.compact} width={layout.content} /> : null}
+      {large ? <HStack spacing={5} padding={{ horizontal: 5 }} background={panel} frame={{ height: 20 }}>
+        <Text font={8} foregroundStyle={widgetTheme.secondary} lineLimit={1} fixedSize={{ horizontal: false, vertical: true }}>Workers 错误 {formatNumber(day?.errors)}</Text>
+        <Text font={8} foregroundStyle={widgetTheme.secondary} lineLimit={1} fixedSize={{ horizontal: false, vertical: true }}>错误率 {day?.errors == null || day.requests === null ? "—" : fraction(day.errors, day.requests)}</Text>
         <Spacer /><Text font={7} foregroundStyle={widgetTheme.secondary}>UTC 重置</Text><DateLabel date={nextReset()} style="timer" font={7} fontDesign="monospaced" />
       </HStack> : null}
       {large ? <VStack alignment="leading" spacing={5} padding={6} background={panel}>
-        <HStack spacing={3}><Text font={8} fontWeight="semibold" foregroundStyle={widgetTheme.secondary}>近 7 个 UTC 日 · 独立刻度</Text><Spacer /><Text font={7} foregroundStyle={widgetTheme.secondary}>W {view.workers.days.filter(item => item.requests !== null).length}/7 · AI {aiCoverage(view)}/7</Text></HStack>
+        <HStack spacing={3} frame={{ height: 11 }}><Text font={8} fontWeight="semibold" foregroundStyle={widgetTheme.secondary} lineLimit={1} fixedSize={{ horizontal: false, vertical: true }}>近 7 个 UTC 日 · 独立刻度</Text><Spacer /><Text font={7} foregroundStyle={widgetTheme.secondary} fixedSize={{ horizontal: false, vertical: true }}>W {view.workers.days.filter(item => item.requests !== null).length}/7 · AI {aiCoverage(view)}/7</Text></HStack>
         <HStack alignment="top" spacing={12}>
           {[false, true].map(isAI => <VStack key={String(isAI)} alignment="leading" spacing={4} frame={{ minWidth: 0, maxWidth: "infinity" }}>
-            <Text font={7} fontWeight="semibold" foregroundStyle={isAI ? aiColor : widgetTheme.brand}>{isAI ? "AI · Neurons" : "Workers · 请求"}</Text>
+            <Text font={7.5} fontWeight="semibold" foregroundStyle={isAI ? aiColor : widgetTheme.brand} fixedSize={{ horizontal: false, vertical: true }} frame={{ height: 10 }}>{isAI ? "AI · Neurons" : "Workers · 请求"}</Text>
             <MiniTrend dates={view.expectedDates} values={view.expectedDates.map(date => isAI ? view.ai.days.find(item => item.dateUTC === date)?.neurons ?? null : view.workers.days.find(item => item.dateUTC === date)?.requests ?? null)} height={layout.chartHeight} ai={isAI} />
           </VStack>)}
         </HStack>
       </VStack> : null}
-      {large ? <HStack alignment="top" spacing={layout.columnGap}>
+      {large ? <HStack alignment="top" spacing={layout.columnGap} frame={{ height: layout.rankHeight, alignment: "topLeading" }}>
         <VStack alignment="leading" spacing={4} frame={{ width: layout.left }}>
-          <Text font={8} fontWeight="semibold" foregroundStyle={widgetTheme.secondary}>{day && day.dateUTC !== utcDate() ? "缓存日" : "今日"} WORKER · TOP 3</Text>
-          <Rankings items={workers} total={day?.requests ?? null} />
+          <Text font={8} fontWeight="semibold" foregroundStyle={widgetTheme.secondary} lineLimit={1} fixedSize={{ horizontal: false, vertical: true }} frame={{ height: 11 }}>{day && day.dateUTC !== utcDate() ? "缓存日" : "今日"} WORKER · TOP 3</Text>
+          <Rankings items={workers} total={day?.requests ?? null} width={layout.left} large />
         </VStack>
         <VStack alignment="leading" spacing={4} frame={{ width: layout.left }}>
-          <Text font={8} fontWeight="semibold" foregroundStyle={aiColor}>{ai && ai.dateUTC !== utcDate() ? "缓存日" : "今日"} 模型 · NEURONS</Text>
-          <Rankings items={models} total={ai?.neurons ?? null} ai />
+          <Text font={8} fontWeight="semibold" foregroundStyle={aiColor} lineLimit={1} fixedSize={{ horizontal: false, vertical: true }} frame={{ height: 11 }}>{ai && ai.dateUTC !== utcDate() ? "缓存日" : "今日"} 模型 · NEURONS</Text>
+          <Rankings items={models} total={ai?.neurons ?? null} width={layout.left} ai large />
         </VStack>
       </HStack> : null}
-      <Spacer frame={{ minHeight: 0 }} />
-      <Footer view={current} day={day} ai={ai} large={large} />
+      <Footer view={current} day={day} ai={ai} large={large} width={layout.content} />
     </VStack>
   </VStack>
 }

@@ -2,7 +2,7 @@
 
 **[安装 Cloudflare Workers Meter 到 Scripting](https://www.scripting.fun/import_scripts/?urls=%5B%22https%3A%2F%2Fraw.githubusercontent.com%2Fyouniube%2Fscripting-cloudflare-zujian%2Fmain%2Freleases%2Fcloudflare-workers-meter.zip%22%5D)**
 
-当前版本 **1.3.0** 新增独立的“融合监控”，排在“监控项目”菜单第一位，后面依次保留 Workers 请求额度和 Workers AI。原有两版的布局与桌面参数保持不变；更新原脚本后沿用已有账号和 Keychain 凭据。
+当前版本 **1.3.1** 修正融合版余额/排行文字缩小、模型名拥挤和底部过大留白。独立的“融合监控”仍排在“监控项目”菜单第一位，后面依次保留 Workers 请求额度和 Workers AI。原有两版的布局与桌面参数保持不变；更新原脚本后沿用已有账号和 Keychain 凭据。
 
 1. 在 iPhone 安装并打开 Scripting。
 2. 用 Safari 打开上面的安装链接。在官方分享页点击打开 Scripting，并确认导入。
@@ -37,8 +37,8 @@ https://github.com/youniube/scripting-cloudflare-zujian/tree/main/scripts/Cloudf
 - 手动刷新：脚本内点击“手动刷新”，按钮上方显示查询进度、完成天数、失败状态或可重试时间。重复刷新已有日期最短间隔为 1 分钟，未缓存历史可在成功刷新今日后立即补取；仍遵守限流和失败间隔。Widget 刷新时间由系统决定。
 - 固定账号：在账号管理中复制 Widget 参数，再粘贴到对应桌面小组件。
 - 更新：仍使用同一安装入口，保留原脚本并选择更新。删除原脚本或导入为另一独立脚本可能需要重新填写 Token。
-- 旧版本提示最新：把原脚本的“远程资源”URL 改为上面的 `/main/releases/` ZIP 地址，保存后再点“立即更新”，确认版本变为 1.3.0。包含固定 Git 提交编号的地址只提供对应历史版本，不适合长期自动更新。
-- 更新 Widget 样式：导入 1.3.0 后，关闭旧管理页并重新运行，先选择“融合监控”，再在“Widget 预览”打开小号、中号、大号，必要时点“重新加载”。检查长数字与圆环有间距、AI 摘要和底部不重叠。预览主题保持“跟随系统”，也可临时分别检查浅色、深色。桌面外观仍需等 WidgetKit 更新后确认。
+- 旧版本提示最新：把原脚本的“远程资源”URL 改为上面的 `/main/releases/` ZIP 地址，保存后再点“立即更新”，确认版本变为 1.3.1。包含固定 Git 提交编号的地址只提供对应历史版本，不适合长期自动更新。
+- 更新 Widget 样式：导入 1.3.1 后，关闭旧管理页并重新运行，先选择“融合监控”，再在“Widget 预览”打开小号、中号、大号，必要时点“重新加载”。重点检查余额和中号 TOP 3 的可读字号、大号模型名与数值之间的独立间距、AI 条到页脚的距离。预览主题保持“跟随系统”，也可临时分别检查浅色、深色。桌面外观仍需等 WidgetKit 更新后确认。
 - 凭据：API Token 只保存在本机 Keychain，不在 GitHub 和 ZIP 中。
 
 安装链接使用 [Scripting 官方分享页](https://www.scripting.fun/import_scripts/) 的 JSON URL 编码格式，目录导入方式与 [官方脚本仓库](https://github.com/scriptingapp/scripts#importing-scripts) 一致。已核对格式，但尚未连接 iPhone 实测原生导入、更新与桌面呈现。

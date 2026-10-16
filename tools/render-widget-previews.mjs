@@ -25,6 +25,16 @@ if (fusionMode && process.argv.includes("--unknown")) {
   aiHistory.forEach(day => { day.neurons = null })
 }
 if (fusionMode && process.argv.includes("--paid")) view.account.plan = "paid"
+// 模拟真机反馈中的数据形状：长名称、三项 Worker、一个模型、AI 六天空缺。
+// 使用通用名称；不复制用户账号、凭据或截图到公开产物。
+if (fusionMode && process.argv.includes("--device-case")) {
+  day.requests = 2441; day.errors = 0
+  day.workers = [1524, 880, 37].map((requests, index) => ({ name: ["api-service", "application-link-formatter", "edge-proxy"][index], requests, errors: 0 }))
+  history[6] = day
+  aiDay.neurons = 56.278; aiDay.requests = 3; aiDay.errors = 0
+  aiDay.models = [{ name: "@cf/qwen/qwen3-30b-a3b-fp8", neurons: 56.278, requests: 3, inputTokens: 1000, outputTokens: 250 }]
+  aiHistory.splice(0, aiHistory.length, aiDay)
+}
 const escape = value => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;")
 function resolve(value, mode) { return value && typeof value === "object" && "light" in value ? value[mode] : value }
 function cssColor(value, mode) {
@@ -87,11 +97,12 @@ function render(node, mode, parent = "", depth = 0) {
   if (type === "Circle") children = circle(node, mode)
   if (type === "Image") { style.push("display:flex", "align-items:center", "justify-content:center", "font-size:16px"); children = "☁" }
   if (type === "ProgressView") {
-    style.push("width:100%", "height:3px", "min-height:3px", "max-height:3px", "border-radius:3px", `background:${cssColor(widgetTheme.track, mode)}`)
-    children = `<div style="height:3px;border-radius:3px;background:${cssColor(p.tint, mode)};width:${(p.value ?? 0) * 100}%"></div>`
+    const barHeight = f.height ?? 3
+    style.push("width:100%", `height:${barHeight}px`, `min-height:${barHeight}px`, `max-height:${barHeight}px`, "border-radius:3px", `background:${cssColor(widgetTheme.track, mode)}`)
+    children = `<div style="height:${barHeight}px;border-radius:3px;background:${cssColor(p.tint, mode)};width:${(p.value ?? 0) * 100}%"></div>`
   }
   if (type === "DateLabel") children = "12:00:00"
-  return `<div data-native="${type}" ${fusionMode && p.minScaleFactor ? `data-min-scale="${p.minScaleFactor}"` : ""} style="${style.join(";")}">${children}</div>`
+  return `<div data-native="${type}" ${fusionMode && p.minScaleFactor ? `data-min-scale="${p.minScaleFactor}"` : ""} ${fusionMode && type === "Text" && p.fixedSize?.vertical ? `data-fixed-vertical="true" data-font-target="${p.font}"` : ""} style="${style.join(";")}">${children}</div>`
 }
 const sizes = scenario === "spacing" ? [["systemSmall", "小号", 158, 158], ["systemMedium", "中号", 338, 158]] : scenario === "stress" ? [["systemSmall", "小号", 148, 148], ["systemMedium", "中号", 321, 148], ["systemLarge", "大号", 321, 329]] : [["systemSmall", "小号", 158, 158], ["systemMedium", "中号", 338, 158], ["systemLarge", "大号", 338, 354]]
 let columns = ""
@@ -106,7 +117,7 @@ for (const mode of ["dark", "light"]) {
   columns += `<article class="${mode}"><h2>${mode === "dark" ? "深色 · Premium Dashboard" : "浅色 · Adaptive Light"}</h2>${cards}</article>`
 }
 const html = `<!doctype html><html lang="zh"><meta charset="utf-8"><title>Cloudflare Workers — TSX 视图树桌面参考</title><style>*{box-sizing:border-box}body{margin:0;padding:22px 28px;background:#e4eaf2;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;color:#263448}h1{margin:0 0 8px;font-size:21px;letter-spacing:-.6px}.notice{font-size:11px;margin-bottom:18px;line-height:1.8}main{display:flex;gap:24px}article{width:480px;border-radius:20px;padding:18px 20px;background:#f0f3f8}.dark{background:#202b3b;color:#d8e1ed}h2{font-size:14px;margin:0 0 14px}section{display:flex;flex-direction:column;align-items:center;margin-bottom:18px}section p{font-size:10px;margin:0 0 8px;opacity:.75}.widget{display:flex;border-radius:22px;overflow:hidden}.widget svg{display:block;flex-shrink:0}</style><h1>Cloudflare Workers · A + C 融合实现</h1><div class="notice">由实际 TSX 视图树生成的桌面近似排版 · ${scenario} 场景 / 模拟数据 · 不是 Scripting 原生预览或 iPhone 真机截图。<br>圆环与流量条直接读取被测组件的数值；SwiftUI 字体、缩放、裁切和系统主题切换仍需在手机验证。</div><main>${columns}</main><script>window.scrollTo(0,0);history.scrollRestoration='manual';const issues=[];for(const card of document.querySelectorAll('[data-widget]')){const b=card.getBoundingClientRect();for(const text of card.querySelectorAll('[data-native="Text"]')){const r=text.getBoundingClientRect();if(r.left<b.left+7||r.right>b.right-7||r.top<b.top+5||r.bottom>b.bottom-5)issues.push({widget:card.dataset.widget,text:text.textContent})}}document.body.dataset.edgeIssues=JSON.stringify(issues)</script></html>`
-const variant = process.argv.includes("--unknown") ? "-unknown" : process.argv.includes("--paid") ? "-paid" : scenario === "normal" ? "" : "-" + scenario
+const variant = process.argv.includes("--device-case") ? "-device-case" : process.argv.includes("--unknown") ? "-unknown" : process.argv.includes("--paid") ? "-paid" : scenario === "normal" ? "" : "-" + scenario
 const filename = fusionMode ? `widget-fusion-native-preview${variant}.html` : aiMode ? `widget-ai-preview${scenario === "normal" ? "" : "-" + scenario}.html` : scenario === "normal" ? "widget-preview.html" : `widget-preview-${scenario}.html`
 // 桌面模拟 minScaleFactor；生产 TSX 仅使用 Scripting 的原生文字缩放。
 const fitScript = `<script>function fitNumbers(){for(const el of document.querySelectorAll('[data-min-scale]')){const base=Number(el.dataset.baseFont)||parseFloat(getComputedStyle(el).fontSize);el.dataset.baseFont=base;const min=base*Number(el.dataset.minScale);el.style.fontSize=base+'px';const range=document.createRange();range.selectNodeContents(el);let font=base;while(range.getBoundingClientRect().width>el.clientWidth+.2&&font>min){font=Math.max(min,font-.25);el.style.fontSize=font+'px'}}}fitNumbers();window.addEventListener('resize',fitNumbers);document.fonts.ready.then(fitNumbers)</script>`

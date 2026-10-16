@@ -114,8 +114,8 @@ test("离开融合页或删除账号后不再启动第二项查询，跨日缓�
   runtime.state.now += 86400_000
   const view = runtime.fusion.cachedFusion(runtime.account, "today")
   const tree = runtime.load("fusion-views").FusionWidgetView({ view, family: "systemSmall" })
-  assert.match(textContent(tree), /10-14 AI 缓存/)
-  assert.match(textContent(tree), /跨日缓存/)
+  assert.match(textContent(tree), /AI 缓存/)
+  assert.match(textContent(tree), /10-14 跨日缓存/)
   const app = runtime.load("fusion-views").FusionAnalytics({ account: runtime.account })
   assert.match(textContent(app), /10-14 缓存 · 请求/)
   assert.match(textContent(app), /10-14 AI 缓存 · Neurons/)
@@ -196,5 +196,42 @@ test("紧凑和标准尺寸的融合数字列与圆环分别保留宽度，95% �
     assert.equal(number.props.minScaleFactor, 0.4)
     assert.match(textContent(tree), /95.3%/)
     assert.match(textContent(tree), /≥95%/)
+  }
+})
+
+test("融合余额与排行的数字保留可读字号和独立列，长名称省略而不挤占数值", async () => {
+  const runtime = setup(), views = runtime.load("fusion-views")
+  const view = await runtime.fusion.loadFusion(runtime.account, "today")
+  view.workers.days[0].workers = [{ name: "application-link-conversion-formatter", requests: 3511, errors: 0 }]
+  view.ai.days[0].models[0].name = "@cf/qwen/qwen3-30b-a3b-fp8"
+  for (const family of ["systemSmall", "systemMedium", "systemLarge"]) {
+    const tree = views.FusionWidgetView({ view, family })
+    const remaining = nodes(tree, "Text").find(node => textContent(node) === "96,489")
+    assert.ok(remaining.props.font * remaining.props.minScaleFactor >= 9, "余额不能再缩到 5pt")
+    assert.ok(remaining.props.frame.width > 50)
+    assert.ok(remaining.props.frame.height >= 13)
+    assert.equal(remaining.props.fixedSize.vertical, true)
+    for (const name of nodes(tree, "Text").filter(node => /application-link|qwen3-30b/.test(textContent(node)))) {
+      assert.equal(name.props.lineLimit, 1)
+      assert.equal(name.props.minScaleFactor, undefined, "长名称应按列宽省略，不能把整行缩成小字")
+      assert.ok(name.props.frame.width > 40)
+      assert.ok(name.props.frame.height >= 13)
+    }
+  }
+})
+
+test("融合三尺寸按高度分配摘要、图表和排名，不再用垂直弹性空白分隔页脚", () => {
+  const runtime = setup(), views = runtime.load("fusion-views")
+  for (const [family, width, height] of [["systemSmall", 148, 148], ["systemSmall", 158, 158], ["systemMedium", 321, 148], ["systemMedium", 338, 158], ["systemLarge", 321, 329], ["systemLarge", 338, 354]]) {
+    for (const count of [1, 3]) {
+      const layout = views.fusionLayout(family, { width, height }, count)
+      const large = family === "systemLarge"
+      const body = 13 + layout.summaryHeight + 11 + (large ? 20 + layout.trendHeight + layout.rankHeight + layout.gap * 5 : (layout.compact ? 26 : 30) + layout.gap * 3)
+      assert.ok(body + layout.inset * 2 <= height + 0.1, "可读行高必须装入该尺寸")
+      assert.ok(height - body - layout.inset * 2 <= 1, "不应留下几十点未分配的底部空白")
+      if (large) assert.ok(layout.chartHeight >= 20)
+    }
+    const tree = views.FusionWidgetView({ view: runtime.fusion.cachedFusion(runtime.account, "today"), family, displaySize: { width, height } })
+    assert.ok(!nodes(tree, "Spacer").some(node => node.props.frame?.minHeight === 0))
   }
 })
