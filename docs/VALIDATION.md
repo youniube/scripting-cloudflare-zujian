@@ -7,9 +7,9 @@
 | 检查 | 结果 | 实际覆盖范围 |
 | --- | --- | --- |
 | `npm run check` | 通过 | 严格 TypeScript / TSX 与依据官方文档整理的最小 API 合约；不等同于完整 Scripting 官方声明检查 |
-| `npm test` | 56 / 56 通过 | 纯逻辑、模拟网络、模拟本地存储、App 启动、直接刷新与历史菜单操作、Widget 结构、额度环、流量条、错误统计、颜色对比度；无真实 API 或 iOS 渲染 |
-| `npm run package` | 通过，9 个项目文件 | ZIP CRC、精确文件内容、目录元数据、文件白名单、测试凭据未进入包；大小和 SHA-256 记录在 release manifest；不等同于 App 导入实测 |
-| 原生源码范围扫描 | 通过 | 7 个源文件没有 Node/DOM/React Native 依赖、日志输出或额外采样倍率 |
+| `npm test` | 73 / 73 通过 | 含原有 56 项与新增 17 项 Workers AI 模拟接口、缓存、UTC、页面和 Widget 入口检查；无真实 API 或 iOS 渲染 |
+| `npm run package` | 通过，11 个项目文件 | ZIP CRC、精确文件内容、目录元数据、文件白名单、测试凭据未进入包；大小和 SHA-256 记录在 release manifest；不等同于 App 导入实测 |
+| 原生源码范围扫描 | 通过 | 9 个源文件没有 Node/DOM/React Native 依赖、日志输出或额外采样倍率 |
 | `node tools/check-device-types.mjs` | 提示缺少手机声明并停止，符合预期 | 确认不会拿手写合约替代完整官方类型检查；实际完整检查尚未执行 |
 
 自动化测试覆盖：
@@ -47,6 +47,16 @@
 - 查询冷却、跨进程占用和网络失败均有状态反馈；失败保留成功缓存，原始异常不进入反馈。
 - 前台手动刷新可在成功获取今日后立即补取缺失历史，重复刷新已有日期、Widget、限流和失败间隔仍受保护。
 - 138 / 148 / 158pt 小号视图树的品牌文字有单行、缩放和固定宽度约束；长账号名可压缩。
+
+## 1.2.0 Workers AI
+
+增加 17 项有实际行为覆盖的检查：动态 Schema/Settings、缺少 Neurons 的字段省略、账号数据集未开放、分页能力不足、独立总量与分页模型排名、小数精度、UTC 分段边界、空记录与真实零、异常及查询预算、保留期、Workers/AI 缓存隔离、Token 留空编辑与删除、并发请求抑制、网络失败与限流回退、历史补取、跨日缓存、参数兼容、阈值、三尺寸真实数值绘图、App AI 菜单与 effect、原生预览配置、真实 `widget.tsx` 入口分流。网络/Keychain/Storage/原生 UI 用模拟对象，不把入口逻辑执行说成 iOS 运行。
+
+`node tools/render-widget-previews.mjs --ai` 和 `--ai --stress` 生成实际 TSX 视图树的桌面近似 HTML，数据明确为测试夹具。浏览器检查正常与紧凑尺寸、三种 Widget、深浅两套主题，所有文本矩形在卡片内。148pt 小号的长账号名使用省略，大数字原生 `minScaleFactor` 需要 iPhone 复验；HTML 渲染器不等价于 SwiftUI 字体缩放。提供 HTML/PNG 参考，未加入安装包。
+
+手机验证：更新原脚本至 1.2.0 → 当前账号的“监控项目”选择 Workers AI → 在线确认数据与字段 → 对比同一 UTC 日期的控制台 Neurons 和推理次数 → 切换 AI 统计时段补取七天 → 下方预览三种尺寸、深浅主题 → 桌面参数填 `ai` 或 `ai:本地账号标识` → 检查离线缓存和跨 UTC 零点。原 Workers 参数仍需确认保持原数据显示。
+
+当前没有真实 Token 和已连接 iPhone。没有声称完成 Cloudflare AI 的在线权限/Schema/计费口径验证、Scripting 完整同步类型检查、原生布局或 WidgetKit 刷新测试。
 
 ## 1.1.3 小号与中号的进度区间距
 

@@ -3,6 +3,7 @@ import { AccountConfig, cacheAge, failureFrom, formatNumber, MonitorView, Period
 import { cachedView, LoadOptions, loadMonitor } from "./service"
 import { deleteAccount, getSettings, saveAccount, selectAccount } from "./storage"
 import { DailyChart, failureLabel, FullQuota, palette, WorkerDetail } from "./views"
+import { AIAnalytics } from "./ai-views"
 
 function AccountEditor({ original }: { original?: AccountConfig }) {
   const dismiss = Navigation.useDismiss()
@@ -80,6 +81,7 @@ function MainView() {
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState("")
   const [reload, setReload] = useState(0)
+  const [kind, setKind] = useState("workers")
   const account = settings.accounts.find(item => item.id === settings.selectedId) ?? settings.accounts[0]
 
   async function refresh(target: AccountConfig, selected: Period, options: LoadOptions = {}, cancelled = () => false) {
@@ -110,10 +112,10 @@ function MainView() {
   }
   useEffect(() => {
     let cancelled = false
-    if (!account) { setView(null); setBusy(false); return }
+    if (!account || kind === "ai") { setView(null); setBusy(false); return }
     void refresh(account, period, {}, () => cancelled)
     return () => { cancelled = true }
-  }, [account?.id, account?.revision, period, reload])
+  }, [account?.id, account?.revision, period, reload, kind])
 
   async function edit(original?: AccountConfig) {
     await Navigation.present({ element: <AccountEditor original={original} /> })
@@ -160,16 +162,22 @@ function MainView() {
         <Picker title="账号" value={account.id} onChanged={switchAccount} disabled={busy}>
           {settings.accounts.map(item => <Text key={item.id} tag={item.id}>{item.displayName}</Text>)}
         </Picker>
-        <FullQuota account={account} day={todayDay} />
+        <Picker title="监控项目" value={kind} pickerStyle="menu" onChanged={setKind} disabled={busy}>
+          <Text tag="workers">Workers 请求额度</Text><Text tag="ai">Workers AI · Neurons</Text>
+        </Picker>
+        {kind === "workers" ? <FullQuota account={account} day={todayDay} /> : null}
+        {kind === "workers" ? <VStack alignment="leading" spacing={8}>
         {busy ? <HStack><ProgressView /><Text font="caption">{progress}</Text></HStack> : <Text font="caption" foregroundStyle={palette.secondary}>{progress || "当前使用缓存 · 手动刷新最短间隔 1 分钟"}</Text>}
         <HStack>
           <Button title="手动刷新" systemImage="arrow.clockwise" buttonStyle="borderless" action={() => refreshNow()} disabled={busy} />
           <Spacer />
           <Button title="验证 API" buttonStyle="borderless" action={() => refreshNow(true)} disabled={busy} />
         </HStack>
+        </VStack> : null}
       </Section>}
 
-      {currentView?.failures.length ? <Section header={<Text>更新状态</Text>}>
+      {account && kind === "ai" ? <AIAnalytics account={account} /> : null}
+      {kind === "workers" && currentView?.failures.length ? <Section header={<Text>更新状态</Text>}>
         {currentView.failures.slice(0, 3).map((failure, index) => <VStack key={index} alignment="leading" spacing={5}>
           <Text font="headline" foregroundStyle={palette.warning}>{failureLabel(failure)}</Text>
           <Text font="caption">{failure.message}</Text>
@@ -177,7 +185,7 @@ function MainView() {
         </VStack>)}
       </Section> : null}
 
-      {account ? <Section header={<Text>历史 · UTC 自然日</Text>} footer={<Text>最近 7 / 30 天包含今日，今日尚未结束。空日期与未知数据不会填成零；历史统计仅对已取得数据求和。</Text>}>
+      {account && kind === "workers" ? <Section header={<Text>历史 · UTC 自然日</Text>} footer={<Text>最近 7 / 30 天包含今日，今日尚未结束。空日期与未知数据不会填成零；历史统计仅对已取得数据求和。</Text>}>
         <Picker title="统计时段" value={period} pickerStyle="menu" onChanged={value => setPeriod(value as Period)} disabled={busy}>
           <Text tag="today">今日</Text><Text tag="yesterday">昨日</Text><Text tag="7d">7 天</Text><Text tag="30d">30 天</Text>
         </Picker>
@@ -199,11 +207,11 @@ function MainView() {
         })}
       </Section> : null}
 
-      {account ? <Section header={<Text>Worker 明细与排名 · {ranked.length} 项</Text>} footer={<Text>{days.length > 1 ? "多日 CPU 分位数不能相加或取平均，选择今日/昨日查看日 P50、P99。" : "CPU 字段可用时显示 API 的日 P50、P99；单位来自 Schema 描述，未明确时显示原始单位。"}</Text>}>
+      {account && kind === "workers" ? <Section header={<Text>Worker 明细与排名 · {ranked.length} 项</Text>} footer={<Text>{days.length > 1 ? "多日 CPU 分位数不能相加或取平均，选择今日/昨日查看日 P50、P99。" : "CPU 字段可用时显示 API 的日 P50、P99；单位来自 Schema 描述，未明确时显示原始单位。"}</Text>}>
         {ranked.length ? ranked.map(worker => <WorkerDetail key={worker.name} worker={worker} total={total} />) : <Text foregroundStyle={palette.secondary}>暂无 Worker 调用记录。可能尚未产生调用，或 Analytics 仍在聚合。</Text>}
       </Section> : null}
 
-      {warnings.length ? <Section header={<Text>数据提示</Text>}>
+      {kind === "workers" && warnings.length ? <Section header={<Text>数据提示</Text>}>
         {warnings.map(warning => <Text key={warning} font="caption" foregroundStyle={palette.warning}>{warning}</Text>)}
       </Section> : null}
 
@@ -212,9 +220,9 @@ function MainView() {
           <Text font="headline">{item.displayName}</Text>
           <Text font="caption" foregroundStyle={palette.secondary}>{planLabel(item)}</Text>
           <Text font="caption" fontDesign="monospaced">Account ID: {item.accountId}</Text>
-          <Text font="caption" fontDesign="monospaced">Widget 参数: {item.id}</Text>
+          <Text font="caption" fontDesign="monospaced">Widget 参数: {kind === "ai" ? "ai:" : ""}{item.id}</Text>
           <Button title="复制 Widget 参数" action={async () => {
-            try { await Pasteboard.setString(item.id); await Dialog.alert({ title: "已复制", message: "长按桌面 Widget → 编辑小组件，将参数粘贴到 Parameter。" }) }
+            try { await Pasteboard.setString((kind === "ai" ? "ai:" : "") + item.id); await Dialog.alert({ title: "已复制", message: "长按桌面 Widget → 编辑小组件，将参数粘贴到 Parameter。" }) }
             catch { await Dialog.alert({ title: "复制失败", message: "可使用该账号唯一显示名称作为 Widget 参数。" }) }
           }} />
           <HStack>
@@ -227,9 +235,9 @@ function MainView() {
       </Section>
       {account ? <Section header={<Text>Widget 预览</Text>}>
         <HStack>
-          <Button title="小号" action={() => Widget.preview({ family: "systemSmall" })} disabled={busy} />
-          <Button title="中号" action={() => Widget.preview({ family: "systemMedium" })} disabled={busy} />
-          <Button title="大号" action={() => Widget.preview({ family: "systemLarge" })} disabled={busy} />
+          <Button title="小号" action={() => preview("systemSmall")} disabled={busy} />
+          <Button title="中号" action={() => preview("systemMedium")} disabled={busy} />
+          <Button title="大号" action={() => preview("systemLarge")} disabled={busy} />
         </HStack>
       </Section> : null}
       <Section header={<Text>统计说明</Text>}>
@@ -238,6 +246,13 @@ function MainView() {
       </Section>
     </List>
   </NavigationStack>
+
+  function preview(family: "systemSmall" | "systemMedium" | "systemLarge") {
+    return Widget.preview({ family, parameters: {
+      options: { Workers: JSON.stringify(account?.id ?? ""), "Workers AI": JSON.stringify("ai:" + (account?.id ?? "")) },
+      default: kind === "ai" ? "Workers AI" : "Workers",
+    } })
+  }
 }
 
 async function run() {

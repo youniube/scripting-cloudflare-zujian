@@ -95,7 +95,7 @@ declare module "scripting" {
     const parameter: string
     const displaySize: { width: number; height: number }
     function present(element: JSX.Element, policy?: { policy: "after"; date: Date } | { policy: "atEnd" }): void
-    function preview(options: { family: WidgetFamily }): Promise<void>
+    function preview(options: { family: WidgetFamily; parameters?: { options: Record<string, string>; default: string } }): Promise<void>
     function reloadAll(): void
   }
   export function fetch(url: string, init?: NativeRequest): Promise<NativeResponse>

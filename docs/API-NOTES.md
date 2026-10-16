@@ -1,6 +1,17 @@
 # API 核对与实现记录
 
-核对日期：2026-10-14 / 2026-10-15。这里记录开发依据与仍需通过当前 App、真实账号确认的边界，不把文档阅读当作真机执行。
+核对日期：2026-10-14 / 2026-10-15 / 2026-10-16。这里记录开发依据与仍需通过当前 App、真实账号确认的边界，不把文档阅读当作真机执行。
+
+## 1.2.0 Workers AI
+
+- 沿用官方 `POST https://api.cloudflare.com/client/v4/graphql` 和 `Account → Account Analytics → Read`；不调用推理接口，不要求模型运行、部署或编辑权限。权限依据：[官方 Analytics Token 教程](https://developers.cloudflare.com/analytics/graphql-api/getting-started/authentication/api-token-auth/)。
+- AI 使用 `aiInferenceAdaptiveGroups`。Cloudflare 官方的 [GraphQL 参考示例](https://github.com/cloudflare/skills/blob/main/skills/cloudflare/references/graphql-api/patterns.md)包含模型维度、`count` 和输入/输出 Tokens；完整字段、账号开放范围与限制应以 [Introspection](https://developers.cloudflare.com/analytics/graphql-api/features/discovery/introspection/) 和 [Settings](https://developers.cloudflare.com/analytics/graphql-api/features/discovery/settings/) 为准。
+- 首次 App AI 加载从 Query → Viewer → Account 的实际类型发现数据集，检查 `datetime_geq`、`datetime_lt`、`modelId_gt`、`modelId_ASC`、`count`、`dimensions.modelId`。未满足边界或完整分页条件则明确停止 AI 查询，Workers 功能独立可用。
+- `sum.totalNeurons`、`sum.totalInputTokens`、`sum.totalOutputTokens` 均在实际 Schema 与 `availableFields` 双重确认后才请求。没有 Neurons 时保持未知，不按 Token 或静态模型价格换算。错误数量仅在实际过滤器提供 `errorCode_neq` 时读取 `errorCode != 0` 的独立聚合。
+- 按 UTC 自然日、半开区间查独立账户汇总和按模型游标分页的全部明细；每页不追加模型/时间/错误维度到汇总查询。分段时只加可加指标，保留 Neurons 小数，不再次乘采样率。空组保留未知，分组与账户差异显示估算提示。
+- [Workers AI 官方定价](https://developers.cloudflare.com/workers-ai/platform/pricing/)列出 Free/Paid 每日 10,000 Neurons、UTC 零点重置。界面表述为“免费量参考剩余”，不作为账单、实时余额或付费账号的硬上限。AI Gateway 预付费和独立计费模型可能不同，项目不声称总 Neurons 必然全部抵扣日免费量。
+- Widget 模式由本地参数 `ai` / `ai:账号标识` 决定。`Widget.preview` 的 `parameters.options/default` 用法按本地官方完整 Widget API 文档核对，选项值为 JSON 序列化字符串；入口支持解码。现有空参数与原有账号参数保留 Workers 行为。
+- 没有真实账号 Token，因此没有在开发端执行 AI 数据查询或获得该账号的在线 Schema。开发已实现运行时验证与安全降级，自动检查使用明确的模拟响应；用户需在手机首次进入 Workers AI 后在线确认实际开放能力。
 
 ## Scripting 原生接口
 

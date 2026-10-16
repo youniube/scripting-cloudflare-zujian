@@ -10,7 +10,26 @@
 
 用 iPhone 的 Safari 打开上面的链接，在官方分享页点击“在 Scripting 中打开”并确认导入。安装后运行脚本，添加 Cloudflare 只读账号，再添加中号 Scripting 桌面小组件。手机无需下载整个 GitHub 仓库或运行桌面命令。
 
-当前版本 **1.1.3 · Premium Dashboard** 采用 Cloudflare 橙色、深蓝黑渐变、原生额度环与 Worker 流量条；浅色主题跟随系统自动适配。小号突出请求数和剩余百分比，中号采用左右分区，大号增加错误统计与七日趋势。原有 API、认证、UTC 统计和账号管理逻辑保留。更新原脚本可避免创建新的凭据作用域。
+当前版本 **1.2.0 · Workers + Workers AI**，新增独立的 Workers AI Neurons 监控。原有 Workers 请求额度和样式保留；两套数据分别查询、缓存与展示。更新原脚本可保留原来的账号和 Keychain 凭据。
+
+## Workers AI 怎么用（1.2.0 新增）
+
+1. 在原脚本的“远程资源”点更新，确认版本为 **1.2.0**。远程 URL 应为上方 `main/releases/cloudflare-workers-meter.zip`，不能固定到某次提交。
+2. 关闭旧管理页面，重新运行脚本；在“当前账号”中点 **监控项目 → Workers AI · Neurons**。
+3. 首次进入会使用当前账号的只读 Token 检查 AI Schema、字段和账号查询限制，再加载今日数据；也可以点 **刷新 AI / 验证 AI API**。现有 `Account → Account Analytics → Read` 为 GraphQL 只读权限，不需要模型运行、部署或编辑权限。
+4. 在 **AI 统计时段** 菜单选择今日、昨日、7 天或 30 天。首次获取历史可能需要等待；没有取得的日期保持 `—`，不会伪装成零。
+5. 要在桌面显示 AI，长按 Scripting 小组件 → 编辑小组件 → 选择本脚本 → 将 **Parameter 填成 `ai`**。需要固定账号时，在脚本账号管理处复制 AI 模式的 Widget 参数（形如 `ai:本地账号标识`）。
+6. 现有 Widget 的参数留空或原有账号参数时，继续显示 Workers 请求量。可以同时摆放一个 Workers 小组件和一个 AI 小组件。App 内切换监控项目不会改变已经配置好的桌面类型。
+
+AI 三种尺寸沿用深浅色自适应的 Cloudflare 仪表盘：小号显示今日 Neurons、额度参考环、参考剩余百分比和缓存时间；中号增加前 3 个模型的 Neurons 消耗；大号增加七日 Neurons 趋势、模型排名、推理次数与 API 支持时的错误数。进入 AI 模式后，底部“Widget 预览”使用官方 `Widget.preview` 的参数选项预览 AI；原生显示仍需 iPhone 验证。
+
+[AI 三尺寸深浅色桌面参考](https://raw.githubusercontent.com/youniube/scripting-cloudflare-zujian/main/docs/widget-ai-preview.png)由实际 TSX 视图树与测试数据生成，属于浏览器近似排版，不是 iPhone 截图，未放入安装包。
+
+**额度含义：** [Workers AI 官方定价](https://developers.cloudflare.com/workers-ai/platform/pricing/)当前列出 Free/Paid 每日含 10,000 Neurons，UTC 00:00 重置。项目据此显示“免费量参考剩余”，使用独立账户 Analytics 汇总，保留 Neurons 小数；它不是官方实时余额。AI Gateway 预付费或独立计费模型可能采用不同口径，付费账号超出免费量后可能继续计费。本项目不会把 Workers 的 100,000 请求额度套给 AI，也不根据输入/输出 Tokens 或猜测模型费率计算 Neurons。
+
+**API 字段与权限：** 使用官方 GraphQL 的 `aiInferenceAdaptiveGroups`，通过当前账号 Introspection 和 Settings 发现能力。确认 `count`、模型维度和游标后查询；`sum.totalNeurons`、`sum.totalInputTokens`、`sum.totalOutputTokens` 仅在 Schema 和权限均开放时使用。Neurons 不可用时显示 `— / Neurons 未提供`；推理次数仍可独立显示。空记录、网络异常、权限不足、限流和字段不支持会明确提示。模型排名使用完整分页，账户总量单独聚合；不再次乘采样率，也不会调用模型来测试或消耗 AI 额度。
+
+AI 缓存与 Workers 缓存隔离；Token 仍只放本机 Keychain。手动刷新最短间隔为 1 分钟，Widget 共享 10 分钟请求抑制，系统决定实际刷新时间。未连接真实 Cloudflare 凭据和 iPhone，当前验证为模拟 API/本地存储、入口执行及桌面视图检查；需在手机对比同一 UTC 日期的控制台用量。
 
 1.1.3 仅调整小号与中号的数字到进度信息区间距：常规尺寸为“圆环＋剩余额度”整行增加 10pt 顶部留白，数字、圆环样式、剩余文字、TOP 3 和大号布局保留。148pt 紧凑高度分别增加 6pt / 4pt，确保底部仍有空间。桌面视图树与浏览器测量已检查，原生显示需更新后在 Scripting 预览确认。
 
@@ -52,6 +71,8 @@ workers-meter-3ded5d9e/
 │       ├── storage.ts               # 私有配置/缓存、Keychain 凭据
 │       ├── service.ts               # 缓存、请求合并、防抖、刷新建议
 │       ├── views.tsx                # 原生界面组件与趋势图
+│       ├── ai.ts                    # Workers AI 查询、统计、独立缓存及刷新
+│       ├── ai-views.tsx             # AI 原生管理区域与三个 Widget 尺寸
 │       └── README.md                # 本教程副本
 ├── dist/
 │   ├── Cloudflare Workers Meter.zip # 仅项目文件的 ZIP
@@ -236,7 +257,7 @@ npm test
 npm run package
 ```
 
-桌面依赖只有 TypeScript。`check` 使用根据官方文档整理的最小 API 合约，不是 Scripting 完整声明；56 项自动化测试使用模拟响应，验证业务、缓存、首次启动、历史菜单操作与补取、直接刷新与状态反馈、三尺寸结构、品牌单行约束、主题、额度环、流量条、错误统计和低用量精度。桌面参考数据只存在于 `tests/` 与 `tools/`，导入包不包含它们。
+桌面依赖只有 TypeScript。`check` 使用根据官方文档整理的最小 API 合约，不是 Scripting 完整声明；73 项自动化测试（含 17 项 Workers AI 专项）使用模拟响应，验证业务、缓存、首次启动、历史菜单操作与补取、直接刷新与状态反馈、三尺寸结构、品牌单行约束、主题、额度环、流量条、错误统计和低用量精度。桌面参考数据只存在于 `tests/` 与 `tools/`，导入包不包含它们。
 
 重新生成桌面 HTML 参考（无需新增依赖，不代表 iOS 渲染）：
 

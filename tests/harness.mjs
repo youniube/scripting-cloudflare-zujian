@@ -40,7 +40,7 @@ export function createRuntime(options = {}) {
   let hookIndex = 0
   Object.assign(native, {
     fetch: async (url, init) => { state.calls.push({ url, init }); return state.performFetch(url, init) },
-    Widget: { family: options.family ?? "systemMedium", parameter: "", displaySize: { width: 360, height: 170 }, present: (element, policy) => { state.presented = { element, policy } }, reloadAll: () => {}, preview: async () => {} },
+    Widget: { family: options.family ?? "systemMedium", parameter: options.parameter ?? "", displaySize: { width: 360, height: 170 }, present: (element, policy) => { state.presented = { element, policy } }, reloadAll: () => {}, preview: async options => { state.previewOptions = options } },
     // Only model JavaScript's initial render, not SwiftUI layout or iOS presentation.
     useState: initial => {
       const index = hookIndex++
@@ -80,7 +80,7 @@ export function createRuntime(options = {}) {
     const absolute = path.resolve(scriptRoot, file.endsWith(".ts") || file.endsWith(".tsx") ? file : file + (fs.existsSync(path.join(scriptRoot, file + ".ts")) ? ".ts" : ".tsx"))
     if (modules.has(absolute)) return modules.get(absolute).exports
     let source = fs.readFileSync(absolute, "utf8")
-    if (options.captureEntry && path.basename(absolute) === "index.tsx") {
+    if (options.captureEntry && ["index.tsx", "widget.tsx"].includes(path.basename(absolute))) {
       // Capture the same startup call so a render exception becomes an awaited test failure.
       if (!/^void run\(\)\s*$/m.test(source)) throw new Error("App startup call was not found")
       source = source.replace(/^void run\(\)\s*$/m, "captureEntry(run())")

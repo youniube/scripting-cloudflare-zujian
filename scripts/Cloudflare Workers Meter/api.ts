@@ -3,15 +3,15 @@ import { byRequests, Capabilities, DAY_MS, DayData, MonitorError, utcStart, Work
 
 export const GRAPHQL_ENDPOINT = "https://api.cloudflare.com/client/v4/graphql"
 type ObjectValue = Record<string, unknown>
-function object(value: unknown): ObjectValue {
+export function object(value: unknown): ObjectValue {
   if (value === null || typeof value !== "object" || Array.isArray(value)) throw new MonitorError("api", "Cloudflare 返回了不完整的数据结构。")
   return value as ObjectValue
 }
-function count(value: unknown): number {
+export function count(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) throw new MonitorError("api", "Cloudflare 返回了无效的统计数值，已保留旧缓存。")
   return value
 }
-function rows(value: unknown): unknown[] {
+export function rows(value: unknown): unknown[] {
   if (!Array.isArray(value)) throw new MonitorError("api", "Analytics 数据缺失，已保留旧缓存。")
   return value
 }
@@ -94,15 +94,15 @@ export class CloudflareClient {
 
 interface TypeRef { name?: string | null; kind?: string; ofType?: TypeRef | null }
 interface Field { name: string; description?: string | null; type: TypeRef; args: { name: string; type: TypeRef }[] }
-interface TypeInfo { fields?: Field[] | null; inputFields?: { name: string }[] | null; enumValues?: { name: string }[] | null }
+export interface TypeInfo { fields?: Field[] | null; inputFields?: { name: string }[] | null; enumValues?: { name: string }[] | null }
 const TYPE_REF = "kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name } } } }"
-const TYPE_BODY = `fields { name description type { ${TYPE_REF} } args { name type { ${TYPE_REF} } } } inputFields { name } enumValues { name }`
-function typeName(ref: TypeRef | undefined): string {
+export const TYPE_BODY = `fields { name description type { ${TYPE_REF} } args { name type { ${TYPE_REF} } } } inputFields { name } enumValues { name }`
+export function typeName(ref: TypeRef | undefined): string {
   if (!ref) throw new MonitorError("schema", "Cloudflare 类型声明缺失。")
   if (ref.name) return ref.name
   return typeName(ref.ofType ?? undefined)
 }
-function field(info: TypeInfo, name: string): Field {
+export function field(info: TypeInfo, name: string): Field {
   const result = info.fields?.find(item => item.name === name)
   if (!result) throw new MonitorError("schema", `Cloudflare 未提供必要的 ${name} 字段。`)
   return result

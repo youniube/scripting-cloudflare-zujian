@@ -129,12 +129,12 @@ export function widgetQuotaColor(account: AccountConfig, day?: DayData) {
 function planBadge(account: AccountConfig) {
   return account.plan === "paid" ? "PAID" : quota(account, null).limit === null ? "未确认" : account.plan === "custom" ? "阈值" : "FREE"
 }
-function BrandHeader({ account, small = false }: { account?: AccountConfig; small?: boolean }) {
+export function BrandHeader({ account, small = false, badge }: { account?: AccountConfig; small?: boolean; badge?: string }) {
   return <HStack spacing={4}>
     <Image systemName="cloud.fill" font={12} foregroundStyle={widgetTheme.brand} frame={{ width: 15, height: 13 }} />
     <Text font={8} fontWeight="bold" kerning={small ? 0.35 : 0.7} foregroundStyle={widgetTheme.brand} lineLimit={1} minScaleFactor={0.8} frame={{ width: small ? 70 : 74, alignment: "leading" }}>CLOUDFLARE</Text>
     {account ? <Text font={small ? 7.5 : 9} foregroundStyle={widgetTheme.secondary} lineLimit={1} minScaleFactor={0.8} frame={{ minWidth: 0, maxWidth: "infinity", alignment: "trailing" }}>{account.displayName}</Text> : <Spacer />}
-    {account && !small ? <Text font={7} fontWeight="semibold" fontDesign="monospaced" foregroundStyle={widgetTheme.secondary} padding={{ horizontal: 4, vertical: 2 }} background={{ style: widgetTheme.panel, shape: { type: "rect", cornerRadius: 4 } }}>{planBadge(account)}</Text> : null}
+    {account && !small ? <Text font={7} fontWeight="semibold" fontDesign="monospaced" foregroundStyle={widgetTheme.secondary} padding={{ horizontal: 4, vertical: 2 }} background={{ style: widgetTheme.panel, shape: { type: "rect", cornerRadius: 4 } }}>{badge ?? planBadge(account)}</Text> : null}
   </HStack>
 }
 /** Native vector ring. No minimum arc or invented percent for missing/Paid data. */
@@ -200,7 +200,7 @@ export function WidgetFooter({ day, failure, missing = 0, showTime = false, leve
   </HStack>
 }
 /** Seven real UTC days. Missing values have no bar; zero never gets a fake minimum height. */
-export function TrendBars({ dates, days, height = 38 }: { dates: string[]; days: DayData[]; height?: number }) {
+export function TrendBars({ dates, days, height = 38 }: { dates: string[]; days: Pick<DayData, "dateUTC" | "requests">[]; height?: number }) {
   const maximum = Math.max(1, ...days.filter(day => dates.includes(day.dateUTC)).map(day => day.requests ?? 0))
   const plotHeight = Math.max(1, height - 13)
   return <HStack alignment="bottom" spacing={5}>

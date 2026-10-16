@@ -3,6 +3,8 @@ import fs from "node:fs"
 import { BASE_TIME, createRuntime, fixtureAccount } from "../tests/harness.mjs"
 
 const { WidgetView, widgetTheme } = createRuntime().load("views")
+const { AIWidgetView } = createRuntime().load("ai-views")
+const aiMode = process.argv.includes("--ai")
 const scenario = process.argv.includes("--spacing") ? "spacing" : process.argv.includes("--stress") ? "stress" : process.argv.includes("--low") ? "low" : "normal"
 const dates = Array.from({ length: 7 }, (_, index) => `2026-10-${String(8 + index).padStart(2, "0")}`)
 const requests = scenario === "spacing" ? 3_511 : scenario === "low" ? 2 : scenario === "stress" ? 95_000 : 42_680
@@ -11,6 +13,10 @@ const names = scenario === "stress" ? counts.map((_, index) => `a-long-worker-na
 const day = { version: 1, dateUTC: dates[6], fetchedAt: new Date(BASE_TIME - 120_000).toISOString(), requests, errors: scenario === "low" ? 0 : 13, workers: counts.map((count, index) => ({ name: names[index], requests: count, errors: 0 })), warnings: [] }
 const view = { account: fixtureAccount({ displayName: scenario === "stress" ? "非常长的 Cloudflare 账号名称" : "个人账号" }), period: "today", expectedDates: [day.dateUTC], days: [day], failures: [], missingDates: [], fromCache: false }
 const history = scenario === "low" ? [day] : dates.map((date, index) => ({ ...day, dateUTC: date, requests: [18_240, 24_310, 19_820, 33_600, 29_450, 38_120, requests][index] }))
+const aiDay = { version: 1, dateUTC: day.dateUTC, fetchedAt: day.fetchedAt, requests: 128, errors: 2, neurons: scenario === "stress" ? 9500.125 : 2750.125, inputTokens: 512000, outputTokens: 42000,
+  models: [1620.125, 830, 300].map((neurons, index) => ({ name: ["@cf/meta/llama-3.3", "@cf/qwen/qwen3-30b", "@cf/baai/bge-m3"][index], neurons: scenario === "stress" ? neurons * 9500.125 / 2750.125 : neurons, requests: [70, 40, 18][index], inputTokens: 1000, outputTokens: 250 })), warnings: [] }
+const aiView = { ...view, days: [aiDay] }
+const aiHistory = dates.map((date, index) => ({ ...aiDay, dateUTC: date, neurons: [1400, 2400.5, 1700, 3100, 2200, 1980, aiDay.neurons][index] }))
 const escape = value => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;")
 function resolve(value, mode) { return value && typeof value === "object" && "light" in value ? value[mode] : value }
 function cssColor(value, mode) {
@@ -84,12 +90,12 @@ let columns = ""
 for (const mode of ["dark", "light"]) {
   let cards = ""
   for (const [family, title, width, height] of sizes) {
-    const tree = WidgetView({ view, family, dates, history, displaySize: { width, height } })
+    const tree = aiMode ? AIWidgetView({ view: aiView, family, dates, history: aiHistory, displaySize: { width, height } }) : WidgetView({ view, family, dates, history, displaySize: { width, height } })
     cards += `<section><p>${title} · ${width} × ${height} pt</p><div class="widget" data-widget="${family}-${mode}" style="width:${width}px;height:${height}px">${render(tree, mode)}</div></section>`
   }
   columns += `<article class="${mode}"><h2>${mode === "dark" ? "深色 · Premium Dashboard" : "浅色 · Adaptive Light"}</h2>${cards}</article>`
 }
 const html = `<!doctype html><html lang="zh"><meta charset="utf-8"><title>Cloudflare Workers — TSX 视图树桌面参考</title><style>*{box-sizing:border-box}body{margin:0;padding:22px 28px;background:#e4eaf2;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;color:#263448}h1{margin:0 0 8px;font-size:21px;letter-spacing:-.6px}.notice{font-size:11px;margin-bottom:18px;line-height:1.8}main{display:flex;gap:24px}article{width:480px;border-radius:20px;padding:18px 20px;background:#f0f3f8}.dark{background:#202b3b;color:#d8e1ed}h2{font-size:14px;margin:0 0 14px}section{display:flex;flex-direction:column;align-items:center;margin-bottom:18px}section p{font-size:10px;margin:0 0 8px;opacity:.75}.widget{display:flex;border-radius:22px;overflow:hidden}.widget svg{display:block;flex-shrink:0}</style><h1>Cloudflare Workers · A + C 融合实现</h1><div class="notice">由实际 TSX 视图树生成的桌面近似排版 · ${scenario} 场景 / 模拟数据 · 不是 Scripting 原生预览或 iPhone 真机截图。<br>圆环与流量条直接读取被测组件的数值；SwiftUI 字体、缩放、裁切和系统主题切换仍需在手机验证。</div><main>${columns}</main><script>window.scrollTo(0,0);history.scrollRestoration='manual';const issues=[];for(const card of document.querySelectorAll('[data-widget]')){const b=card.getBoundingClientRect();for(const text of card.querySelectorAll('[data-native="Text"]')){const r=text.getBoundingClientRect();if(r.left<b.left+7||r.right>b.right-7||r.top<b.top+5||r.bottom>b.bottom-5)issues.push({widget:card.dataset.widget,text:text.textContent})}}document.body.dataset.edgeIssues=JSON.stringify(issues)</script></html>`
-const filename = scenario === "normal" ? "widget-preview.html" : `widget-preview-${scenario}.html`
-fs.writeFileSync(new URL(`../docs/${filename}`, import.meta.url), html)
+const filename = aiMode ? `widget-ai-preview${scenario === "normal" ? "" : "-" + scenario}.html` : scenario === "normal" ? "widget-preview.html" : `widget-preview-${scenario}.html`
+fs.writeFileSync(new URL(`../docs/${filename}`, import.meta.url), aiMode ? html.replaceAll("Cloudflare Workers · A + C 融合实现", "Cloudflare Workers AI · Neurons") : html)
 console.log(`Generated docs/${filename}; desktop approximation only.`)

@@ -69,6 +69,7 @@ export function saveAccount(input: AccountConfig, tokenInput: string): AccountCo
     Storage.remove(key(account.id, "capabilities"))
     Storage.remove(key(account.id, "failure"))
     Storage.remove(key(account.id, "attempt"))
+    for (const suffix of ["capabilities", "failure", "attempt"]) Storage.remove(key(account.id, "ai." + suffix))
   }
   return account
 }
