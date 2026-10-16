@@ -256,6 +256,7 @@ test("AI 三尺寸使用 Neurons 真值绘制，未知量不显示满额；大�
 
 test("App 有明确监控项目菜单，AI 模式只查询 AI，刷新反馈、原生预览参数均正确", async () => {
   const runtime = setup({ captureEntry: true })
+  runtime.state.hooks[6] = "workers" // 继续验证从原独立 Workers 页面切到 AI 的路径。
   runtime.load("index"); await runtime.state.entryPromise
   const picker = nodes(runtime.state.presented.element, "Picker").find(node => node.props.title === "监控项目")
   assert.equal(picker.props.pickerStyle, "menu")

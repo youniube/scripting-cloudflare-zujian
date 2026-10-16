@@ -90,7 +90,7 @@ export function rankAIModels(days: Pick<AIDay, "models">[]): AIModel[] {
   }
   return [...metrics.values()].sort((a, b) => (b.neurons ?? -1) - (a.neurons ?? -1) || b.requests - a.requests || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
 }
-/** 参数 ai / ai:账号标识 显示 AI；既有账号参数继续表示 Workers。 */
+/** 新增 fusion / fusion:账号标识；既有 ai 和 Workers 参数含义保持不变。 */
 export function resolveWidgetTarget(parameter: string | null | undefined) {
   let value = parameter?.trim() ?? ""
   // 官方 Widget.preview 的 options 使用 JSON 序列化的参数值。
@@ -98,6 +98,7 @@ export function resolveWidgetTarget(parameter: string | null | undefined) {
     try { const parsed: unknown = JSON.parse(value); if (typeof parsed === "string") value = parsed.trim() } catch { /* 交给账号参数校验。 */ }
   }
   const ai = value === "ai" || value.startsWith("ai:")
+  if (value === "fusion" || value.startsWith("fusion:")) return { kind: "fusion" as const, account: resolveWidgetAccount(value === "fusion" ? "" : value.slice(7)) }
   return { kind: ai ? "ai" as const : "workers" as const, account: resolveWidgetAccount(ai ? value === "ai" ? "" : value.slice(3) : value) }
 }
 

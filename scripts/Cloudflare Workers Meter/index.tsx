@@ -4,6 +4,7 @@ import { cachedView, LoadOptions, loadMonitor } from "./service"
 import { deleteAccount, getSettings, saveAccount, selectAccount } from "./storage"
 import { DailyChart, failureLabel, FullQuota, palette, WorkerDetail } from "./views"
 import { AIAnalytics } from "./ai-views"
+import { FusionAnalytics } from "./fusion-views"
 
 function AccountEditor({ original }: { original?: AccountConfig }) {
   const dismiss = Navigation.useDismiss()
@@ -81,7 +82,7 @@ function MainView() {
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState("")
   const [reload, setReload] = useState(0)
-  const [kind, setKind] = useState("workers")
+  const [kind, setKind] = useState("fusion")
   const account = settings.accounts.find(item => item.id === settings.selectedId) ?? settings.accounts[0]
 
   async function refresh(target: AccountConfig, selected: Period, options: LoadOptions = {}, cancelled = () => false) {
@@ -112,7 +113,7 @@ function MainView() {
   }
   useEffect(() => {
     let cancelled = false
-    if (!account || kind === "ai") { setView(null); setBusy(false); return }
+    if (!account || kind !== "workers") { setView(null); setBusy(false); return }
     void refresh(account, period, {}, () => cancelled)
     return () => { cancelled = true }
   }, [account?.id, account?.revision, period, reload, kind])
@@ -163,6 +164,7 @@ function MainView() {
           {settings.accounts.map(item => <Text key={item.id} tag={item.id}>{item.displayName}</Text>)}
         </Picker>
         <Picker title="监控项目" value={kind} pickerStyle="menu" onChanged={setKind} disabled={busy}>
+          <Text tag="fusion">融合监控 · Workers + AI</Text>
           <Text tag="workers">Workers 请求额度</Text><Text tag="ai">Workers AI · Neurons</Text>
         </Picker>
         {kind === "workers" ? <FullQuota account={account} day={todayDay} /> : null}
@@ -176,6 +178,7 @@ function MainView() {
         </VStack> : null}
       </Section>}
 
+      {account && kind === "fusion" ? <FusionAnalytics account={account} /> : null}
       {account && kind === "ai" ? <AIAnalytics account={account} /> : null}
       {kind === "workers" && currentView?.failures.length ? <Section header={<Text>更新状态</Text>}>
         {currentView.failures.slice(0, 3).map((failure, index) => <VStack key={index} alignment="leading" spacing={5}>
@@ -215,15 +218,15 @@ function MainView() {
         {warnings.map(warning => <Text key={warning} font="caption" foregroundStyle={palette.warning}>{warning}</Text>)}
       </Section> : null}
 
-      <Section header={<Text>账号管理</Text>} footer={<Text>Widget 参数留空跟随当前账号；填写唯一显示名称、Account ID 或这里的本地标识可固定账号。多账号的 Token 与缓存独立。</Text>}>
+      <Section header={<Text>账号管理</Text>} footer={<Text>当前监控项目的 Widget 参数见下方。fusion 为融合版，ai 为独立 AI 版；留空为原 Workers 版。固定账号可复制参数。多账号的 Token 与缓存独立。</Text>}>
         {settings.accounts.map(item => <VStack key={item.id} alignment="leading" spacing={7}>
           <Text font="headline">{item.displayName}</Text>
           <Text font="caption" foregroundStyle={palette.secondary}>{planLabel(item)}</Text>
           <Text font="caption" fontDesign="monospaced">Account ID: {item.accountId}</Text>
-          <Text font="caption" fontDesign="monospaced">Widget 参数: {kind === "ai" ? "ai:" : ""}{item.id}</Text>
+          <Text font="caption" fontDesign="monospaced">Widget 参数: {kind === "fusion" ? "fusion:" : kind === "ai" ? "ai:" : ""}{item.id}</Text>
           <Button title="复制 Widget 参数" action={async () => {
-            try { await Pasteboard.setString((kind === "ai" ? "ai:" : "") + item.id); await Dialog.alert({ title: "已复制", message: "长按桌面 Widget → 编辑小组件，将参数粘贴到 Parameter。" }) }
-            catch { await Dialog.alert({ title: "复制失败", message: "可使用该账号唯一显示名称作为 Widget 参数。" }) }
+            try { await Pasteboard.setString((kind === "fusion" ? "fusion:" : kind === "ai" ? "ai:" : "") + item.id); await Dialog.alert({ title: "已复制", message: "长按桌面 Widget → 编辑小组件，将参数粘贴到 Parameter。" }) }
+            catch { await Dialog.alert({ title: "复制失败", message: "可手动填写上方完整 Widget 参数。" }) }
           }} />
           <HStack>
             <Button title="编辑" action={() => edit(item)} disabled={busy} />
@@ -249,8 +252,8 @@ function MainView() {
 
   function preview(family: "systemSmall" | "systemMedium" | "systemLarge") {
     return Widget.preview({ family, parameters: {
-      options: { Workers: JSON.stringify(account?.id ?? ""), "Workers AI": JSON.stringify("ai:" + (account?.id ?? "")) },
-      default: kind === "ai" ? "Workers AI" : "Workers",
+      options: { "融合监控": JSON.stringify("fusion:" + (account?.id ?? "")), Workers: JSON.stringify(account?.id ?? ""), "Workers AI": JSON.stringify("ai:" + (account?.id ?? "")) },
+      default: kind === "fusion" ? "融合监控" : kind === "ai" ? "Workers AI" : "Workers",
     } })
   }
 }

@@ -7,7 +7,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_NAME = "Cloudflare Workers Meter"
 SOURCE = ROOT / "scripts" / SCRIPT_NAME
-FILES = ("script.json", "index.tsx", "widget.tsx", "core.ts", "api.ts", "storage.ts", "service.ts", "views.tsx", "ai.ts", "ai-views.tsx", "README.md")
+FILES = ("script.json", "index.tsx", "widget.tsx", "core.ts", "api.ts", "storage.ts", "service.ts", "views.tsx", "ai.ts", "ai-views.tsx", "fusion.ts", "fusion-views.tsx", "README.md")
 
 
 def package():

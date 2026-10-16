@@ -9,6 +9,8 @@ function nodes(value, type) {
 }
 function allText(element) { return nodes(element, "Text").map(textContent).join(" ") }
 async function launch(runtime) {
+  // 这些回归用例针对保留的独立 Workers 页面；融合版默认入口在 fusion.test.mjs 验证。
+  if (!Object.hasOwn(runtime.state.hooks, 6)) runtime.state.hooks[6] = "workers"
   runtime.load("index")
   assert.ok(runtime.state.entryPromise, "must execute and capture the real App startup call")
   await runtime.state.entryPromise

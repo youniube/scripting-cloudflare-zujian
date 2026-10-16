@@ -7,12 +7,22 @@
 | 检查 | 结果 | 实际覆盖范围 |
 | --- | --- | --- |
 | `npm run check` | 通过 | 严格 TypeScript / TSX 与依据官方文档整理的最小 API 合约；不等同于完整 Scripting 官方声明检查 |
-| `npm test` | 73 / 73 通过 | 含原有 56 项与新增 17 项 Workers AI 模拟接口、缓存、UTC、页面和 Widget 入口检查；无真实 API 或 iOS 渲染 |
-| `npm run package` | 通过，11 个项目文件 | ZIP CRC、精确文件内容、目录元数据、文件白名单、测试凭据未进入包；大小和 SHA-256 记录在 release manifest；不等同于 App 导入实测 |
-| 原生源码范围扫描 | 通过 | 9 个源文件没有 Node/DOM/React Native 依赖、日志输出或额外采样倍率 |
+| `npm test` | 84 / 84 通过 | 原有 73 项与新增 11 项融合模式菜单、参数、串行服务、失败隔离、取消、手动刷新及三尺寸入口检查；无真实 API 或 iOS 渲染 |
+| `npm run package` | 通过，13 个项目文件 | ZIP CRC、精确文件内容、目录元数据、文件白名单、测试凭据未进入包；大小和 SHA-256 记录在 release manifest；不等同于 App 导入实测 |
+| 原生源码范围扫描 | 通过 | 11 个源文件没有 Node/DOM/React Native 依赖、日志输出或额外采样倍率 |
 | `node tools/check-device-types.mjs` | 提示缺少手机声明并停止，符合预期 | 确认不会拿手写合约替代完整官方类型检查；实际完整检查尚未执行 |
 
 自动化测试覆盖：
+
+- 1.3.0 融合版默认入口与菜单顺序为 fusion、workers、ai；三个官方预览参数均保留。
+- 新增 fusion / fusion:账号 / JSON 预览参数，空参数、原账号参数与 ai 参数保持原有含义。
+- 两项服务依次获取且复用原缓存，账户请求数与 Neurons 从不相加；单项失败时保留另一个成功结果。
+- AI 429 保留上次成功值与更新时间，重复刷新遵守冷却，Widget 建议时间覆盖两项 Retry-After。
+- 离开融合页或删除账号后不再启动第二项查询，跨 UTC 日缓存显示真实日期。
+- 融合页的实际启动/effect 只加载两套七日数据，不额外启动独立 Workers 页的查询。
+- 融合手动刷新直接发请求，保留完成/冷却反馈；三个 Widget 入口均复用 App 历史而不改变今日额度。
+- Paid Workers 不显示免费请求日额度；AI 仍是独立免费量参考。历史缺失不绘制假柱，零值与缺失区分。
+- Small 148/158、Medium 321×148/338×158、Large 321×329/338×354 的数字列、间距与圆环分别保留宽度。
 
 - UTC 日期与下一次重置，上海本地午夜、跨年、闰日、昨日/7 日/30 日范围。
 - 免费套餐确认要求，付费与未知套餐不套免费额度，自定义正整数/确认来源。
@@ -133,3 +143,23 @@ Chrome 对实际 TSX 视图树生成的 HTML 做桌面测量（不是 SwiftUI）
 用户反馈提供了旧版三尺寸手机预览能显示内容的证据。开发环境没有连接 iPhone；本次升级未完成由开发端执行的真机布局、主题切换或真实 Cloudflare 请求验证。安装包内没有生产演示用量；桌面设计参考使用明确标注的测试数据。
 
 当前 ZIP 的大小与 SHA-256 记录在 `dist/manifest.json` 和 `releases/manifest.json`，校验文件为 `releases/SHA256SUMS.txt`。参考资料留在本地，不进入安装包或 GitHub 发布清单。
+
+
+## 1.3.0 融合界面与真机核验
+
+新增 fusion.ts、fusion-views.tsx，入口与参数分流做局部接入。原 views.tsx、ai-views.tsx、core.ts、api.ts、service.ts、storage.ts 与 1.2.0 完全相同；ai.ts 只增加融合参数识别分支，查询和统计部分保留。没有迁移设置、Token 或缓存，未增加权限或部署服务。
+
+读取了官方 Scripting 开发 Skill 的 Widget、页面及验证说明，并核对本地官方文档中的 frame、Text、DynamicShapeStyle 和 Widget API。新布局采用已核对的 HStack / VStack、固定 frame、lineLimit、minScaleFactor、Circle.trim、ProgressView、DateLabel、Widget.preview / present / displaySize；没有浏览器 API 进入脚本。完整手机同步声明仍不可用，因此本机 TypeScript 检查只使用文档合约。
+
+tools/render-widget-previews.mjs --fusion 从实际 FusionWidgetView 视图树生成浏览器参考；--stress、--unknown、--paid 分别覆盖紧凑高用量、AI 缺少 Neurons、付费 Workers。假数据仅位于桌面工具/测试。浏览器模拟原生 minScaleFactor，不代表 SwiftUI 的实际字体度量。
+
+已在 Chrome 检查 24 组条件：4 个场景 × 320/390/1280 三种页面宽度 × 默认字体/更宽的 Courier New + 1.5px 字距，每组包含三尺寸和深浅色，共 144 个卡片。tools/check-fusion-native-preview.js 检查数字实际字形宽度、数字与圆环间距、文字边界及页面横向溢出。最终没有发现这几类问题；测得字形到圆环容器的最小间距约 6.58pt。该数值只描述桌面参考；原生代码保留的列间距为 Small 10pt、Medium 8pt、Large 7pt。
+
+真实 iPhone 待测：
+
+1. 将原脚本更新至 1.3.0，关闭旧管理页并重新运行，确认三项菜单顺序与两个原版的布局。
+2. 融合页等待默认近 7 日加载；确认 Workers 与 AI 的汇总、日期和模型/Worker 排名分别与 Cloudflare 同一账号、同一 UTC 日的控制台相符。没有真实 Token，因此本机未做这项验证。
+3. 在底部依次点“小号 / 中号 / 大号”；预览参数选“融合监控”，分别检查浅色、深色、正常与长数字，特别是数字列缩放、品牌单行、AI 条及底部边界。
+4. 新增桌面小组件，Parameter 填 fusion（固定账号用 fusion:账号标识），三个尺寸分别验证。原有空参数 Workers 和 ai 参数 AI 应维持原版。
+5. 在 App 选择 7/30 日，确认历史补齐后大号显示缓存趋势，小号和中号仍显示今日。桌面每轮只优先刷新两项今日，不承诺固定分钟更新。
+6. 断网后确认两项分别保留缓存与旧更新时间；恢复网络后手动刷新，观察冷却或失败提示。系统真实刷新、导入更新、Keychain 共享、原生文字布局仍需真机验证。

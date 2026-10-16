@@ -4,6 +4,8 @@ import { cachedView, loadMonitor, suggestedReload } from "./service"
 import { SetupWidget, WidgetView } from "./views"
 import { cachedAIView, loadAI, resolveWidgetTarget } from "./ai"
 import { AIWidgetView } from "./ai-views"
+import { cachedFusion, fusionReload, loadFusion } from "./fusion"
+import { FusionWidgetView } from "./fusion-views"
 
 async function run() {
   try {
@@ -16,6 +18,14 @@ async function run() {
       throw new MonitorError("configuration", "本项目支持桌面小号、中号、大号 Widget。请选择这三种尺寸。")
     }
     const period = Widget.family === "systemLarge" ? "7d" : "today"
+    if (kind === "fusion") {
+      const view = await loadFusion(account, period, { widget: true })
+      const today = cachedFusion(account, "today")
+      today.workers.failures = view.workers.failures
+      today.ai.failures = view.ai.failures
+      Widget.present(<FusionWidgetView view={view} today={today} family={Widget.family} displaySize={Widget.displaySize} />, { policy: "after", date: fusionReload(view) })
+      return
+    }
     if (kind === "ai") {
       const history = await loadAI(account, period, { widget: true })
       const today = cachedAIView(account, "today")

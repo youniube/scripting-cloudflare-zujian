@@ -1,8 +1,8 @@
 {
   "archive": "cloudflare-workers-meter.zip",
-  "version": "1.2.0",
-  "bytes": 50811,
-  "sha256": "9eb3a8fc1d3bdf2b468297eff3dd9ebd50a5058e3b3034a18399320e915e41a7",
+  "version": "1.3.0",
+  "bytes": 60085,
+  "sha256": "951f5e609cb4e7e64bfb3997e236dfdc4d6bc98951ec4b6950b137fa98ae2d16",
   "files": [
     "script.json",
     "index.tsx",
@@ -14,6 +14,8 @@
     "views.tsx",
     "ai.ts",
     "ai-views.tsx",
+    "fusion.ts",
+    "fusion-views.tsx",
     "README.md"
   ],
   "verified": "ZIP CRC, exact source contents, allowlisted files",
