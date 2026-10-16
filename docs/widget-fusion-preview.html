@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Cloudflare · Workers 与 AI 融合布局预览</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page:#10151e; --page-glow:#192434; --ink:#f4f6fb; --secondary:#a5b3c7;
+      --muted:#7f91aa; --rule:#2a3546; --control:#1c2635; --control-active:#35445b;
+      --widget:linear-gradient(145deg,#172233 0%,#0d131d 68%,#161b24 100%);
+      --panel:#1b2635; --track:#2a3546; --orange:#ffaf70; --orange-strong:#ffa45a;
+      --ai:#a3bbed; --ai-fill:#809bd1; --warn:#ffd176; --critical:#ff8d9f;
+      --orange-gradient:linear-gradient(90deg,#f58229,#ffc48f);
+      --ai-gradient:linear-gradient(90deg,#708dca,#c0d0f1);
+      --shadow:0 16px 34px #00000022,0 2px 4px #00000018;
+    }
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --page:#edf1f6; --page-glow:#fff8f1; --ink:#152235; --secondary:#536278;
+      --muted:#65758b; --rule:#d8e0eb; --control:#e2e8f0; --control-active:#ffffff;
+      --widget:linear-gradient(145deg,#fff 0%,#f8fafd 70%,#fff7f1 100%);
+      --panel:#edf1f6; --track:#e1e6ee; --orange:#a5470c; --orange-strong:#a94a0b;
+      --ai:#3f5f9b; --ai-fill:#6783bd; --warn:#885400; --critical:#b3223a;
+      --orange-gradient:linear-gradient(90deg,#bd510e,#e78532);
+      --ai-gradient:linear-gradient(90deg,#526fa8,#8fa9d6);
+      --shadow:0 16px 34px #20334c10,0 2px 5px #20334c08;
+    }
+    * {box-sizing:border-box}
+    body {margin:0;background:radial-gradient(ellipse at 10% 0,var(--page-glow),transparent 55%),var(--page);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+    button,select {font:inherit}
+    button {cursor:pointer}
+    button:focus-visible,select:focus-visible {outline:2px solid var(--orange);outline-offset:3px}
+    .page {max-width:1180px;margin:auto;padding:40px 30px 30px}
+    .eyebrow {display:flex;align-items:center;gap:9px;font-size:11px;letter-spacing:.11em;color:var(--orange);font-weight:650}
+    .eyebrow:before {content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+    h1 {font-size:clamp(24px,4vw,35px);letter-spacing:-1.1px;line-height:1.25;margin:13px 0 10px;font-weight:690}
+    .intro {max-width:740px;color:var(--secondary);font-size:13px;line-height:1.9;margin:0}
+    .toolbar {display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:25px 0 23px;padding:15px 0;border-block:1px solid var(--rule)}
+    .controls {display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+    .control-label {font-size:11px;color:var(--secondary)}
+    .theme-buttons {display:flex;gap:2px;padding:3px;border-radius:10px;background:var(--control)}
+    .theme-buttons button {border:0;border-radius:7px;background:none;color:var(--secondary);padding:7px 12px;font-size:11px;min-height:30px}
+    .theme-buttons button[aria-pressed="true"] {color:var(--ink);background:var(--control-active)}
+    .scenario {min-height:36px;border:1px solid var(--rule);border-radius:9px;background:var(--control);color:var(--ink);padding:6px 28px 6px 10px;font-size:11px}
+    .legend {display:flex;align-items:center;gap:15px;font-size:11px;color:var(--secondary)}
+    .legend span {display:flex;align-items:center;gap:6px}
+    .legend i {width:6px;height:6px;border-radius:50%;background:var(--orange-strong)}
+    .legend .ai-dot {background:var(--ai-fill)}
+    .gallery {display:grid;grid-template-columns:.74fr 1.3fr 1.3fr;gap:25px;align-items:start}
+    figure {min-width:0;margin:0}
+    .size-label {display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin:0 0 18px;color:var(--secondary);font-size:11px}
+    .size-label b {font-size:13px;color:var(--ink);font-weight:600}
+    .size-label span {font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+    .canvas {position:relative;margin:auto;flex:none}
+    .widget {position:absolute;top:0;left:0;display:flex;flex-direction:column;overflow:hidden;transform-origin:top left;background:var(--widget);color:var(--ink);box-shadow:var(--shadow);font-variant-numeric:tabular-nums;isolation:isolate}
+    .small {width:158px;height:158px;padding:12px;border-radius:23px;gap:5px}
+    .medium {width:338px;height:158px;padding:12px;border-radius:24px;gap:5px}
+    .large {width:338px;height:354px;padding:14px;border-radius:25px;gap:8px}
+    .brand {display:flex;align-items:center;gap:4px;flex:none;height:12px;min-width:0}
+    .brand svg {flex:none;width:15px;height:12px;fill:var(--orange)}
+    .wordmark {flex:none;white-space:nowrap;font-size:7.6px;letter-spacing:.65px;font-weight:800;color:var(--orange)}
+    .small .wordmark {letter-spacing:.35px}
+    .account {flex:1;min-width:0;text-align:right;font-size:8px;color:var(--secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-left:3px}
+    .small .account {font-size:7px}
+    .plan {flex:none;font-size:6.8px;letter-spacing:.2px;padding:2px 4px;border-radius:4px;background:var(--panel);color:var(--secondary);font-weight:650}
+    .kicker {font-size:8.5px;line-height:11px;color:var(--secondary);white-space:nowrap}
+    .numeral {font-weight:750;letter-spacing:.3px;line-height:1.12;font-family:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .main-value {font-size:28px;white-space:nowrap}
+    .small-main {display:flex;align-items:flex-end;justify-content:space-between;gap:7px;min-height:43px}
+    .small-main .metric {min-width:0}
+    .small-main .main-value {margin-top:2px}
+    .remaining-row {display:flex;align-items:center;justify-content:space-between;gap:5px;font-size:8px;line-height:11px;color:var(--secondary);white-space:nowrap}
+    .remaining-row b {color:var(--ink);font-weight:650;font-size:9px}
+    .donut {position:relative;flex:none;width:36px;height:36px;display:grid;place-items:center}
+    .donut svg {position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+    .donut circle {fill:none;stroke-width:3.5}
+    .donut .ring-track {stroke:var(--track)}
+    .donut .ring-arc {stroke:var(--orange-strong);stroke-linecap:round}
+    .donut.ai-ring .ring-arc {stroke:var(--ai-fill)}
+    .donut.unknown .ring-track {stroke-dasharray:2.5 3}
+    .donut .ring-label {position:relative;font-size:7.8px;font-weight:700;line-height:1;text-align:center;white-space:nowrap}
+    .donut .ring-caption {display:block;margin-top:3px;font-size:5.8px;font-weight:450;color:var(--secondary)}
+    .ai-strip {flex:none;background:var(--panel);border-radius:7px;padding:5px 6px;min-width:0}
+    .ai-strip-head {display:flex;align-items:baseline;gap:5px;white-space:nowrap;min-width:0}
+    .ai-name {font-weight:650;color:var(--ai);font-size:7.5px;letter-spacing:.2px;flex:none}
+    .ai-strip-value {font-size:11px;font-weight:700;letter-spacing:.1px;color:var(--ink);white-space:nowrap}
+    .ai-strip-pct {margin-left:auto;font-size:7.6px;color:var(--secondary);white-space:nowrap}
+    .bar {position:relative;background:var(--track);height:3px;border-radius:3px;overflow:hidden;flex:none}
+    .bar .fill {height:100%;width:0;border-radius:inherit;background:var(--orange-gradient)}
+    .bar.ai-bar .fill {background:var(--ai-gradient)}
+    .ai-strip .bar {margin-top:4px}
+    .footer {display:flex;align-items:center;justify-content:space-between;gap:5px;font-size:7.5px;line-height:10px;white-space:nowrap;color:var(--secondary);margin-top:auto;min-width:0}
+    .footer-status {min-width:0;overflow:hidden;text-overflow:ellipsis}
+    .status-dot {display:inline-block;width:2.6px;height:2.6px;border-radius:50%;background:currentColor;margin:0 3px 1px 0}
+    .footer-time {flex:none;color:var(--secondary)}
+    .medium-main {display:grid;grid-template-columns:.94fr 1.06fr;gap:12px;min-width:0;align-items:start}
+    .workers-summary {min-width:0}
+    .workers-value-row {display:flex;align-items:center;justify-content:space-between;gap:5px;margin:1px 0 2px}
+    .workers-value-row .donut {width:33px;height:33px}
+    .medium .main-value {font-size:28px}
+    .medium .remaining-row {font-size:7.8px}
+    .medium .remaining-row b {font-size:9px}
+    .rank-block {min-width:0}
+    .rank-title {color:var(--secondary);font-size:7.5px;font-weight:650;letter-spacing:.45px;line-height:10px;margin-bottom:4px;white-space:nowrap}
+    .rank-list {display:grid;gap:3px;min-width:0}
+    .rank-row {min-width:0}
+    .rank-line {display:flex;align-items:baseline;justify-content:space-between;gap:5px;font-size:9px;line-height:11px;min-width:0;margin-bottom:1.5px}
+    .rank-name {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .rank-value {flex:none;font-size:9px;font-weight:650}
+    .rank-row .bar {height:2.5px}
+    .medium .ai-strip {padding:4px 7px}
+    .medium .ai-name {font-size:7.5px;letter-spacing:.35px}
+    .ai-strip-remaining {font-size:8px;white-space:nowrap;color:var(--secondary)}
+    .medium .ai-strip-pct {font-size:8px}
+    .medium .ai-strip-value {font-size:10.5px}
+    .ai-strip-unit {font-size:7.5px;color:var(--secondary);margin-left:-2px}
+    .dual-summary {display:grid;grid-template-columns:1fr 1fr;gap:14px;min-width:0}
+    .dual-cell {min-width:0}
+    .dual-cell + .dual-cell {border-left:1px solid var(--rule);padding-left:13px}
+    .dual-label {font-size:8px;font-weight:650;letter-spacing:.6px;line-height:11px;color:var(--secondary)}
+    .dual-value-row {display:flex;align-items:center;justify-content:space-between;gap:4px;margin:3px 0 4px;min-width:0}
+    .dual-value {font-size:24px;white-space:nowrap;min-width:0}
+    .dual-cell.ai-cell .dual-value {font-size:21px;letter-spacing:0}
+    .large .donut {width:35px;height:35px}
+    .large .ring-label {font-size:7.5px}
+    .dual-remaining {font-size:7.5px;color:var(--secondary);white-space:nowrap;line-height:11px}
+    .dual-remaining b {font-size:8.8px;color:var(--ink);font-weight:650}
+    .dual-allowance {font-size:7px;color:var(--secondary);line-height:10px;margin-top:1px}
+    .health {display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:6px;background:var(--panel);font-size:7.5px;line-height:9px;color:var(--secondary)}
+    .health .reset {margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .trend-panel {flex:none;background:var(--panel);padding:7px;border-radius:8px}
+    .section-title {font-size:8.5px;color:var(--secondary);font-weight:650;line-height:11px}
+    .trend-pair {display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:6px}
+    .mini-chart {min-width:0}
+    .chart-heading {display:flex;justify-content:space-between;gap:4px;font-size:7px;color:var(--secondary);line-height:9px;margin-bottom:5px;white-space:nowrap}
+    .chart-heading strong {font-weight:550}
+    .chart-body {height:41px;display:flex;gap:5px;align-items:flex-end}
+    .chart-column {flex:1;min-width:0;height:41px;display:flex;align-items:center;justify-content:flex-end;flex-direction:column}
+    .chart-mark {width:9px;max-width:100%;border-radius:2px 2px 1px 1px;background:var(--orange-strong);opacity:.65;flex:none}
+    .chart-column:last-child .chart-mark {background:var(--orange-gradient);opacity:1}
+    .mini-chart.ai-chart .chart-mark {background:var(--ai-fill)}
+    .mini-chart.ai-chart .chart-column:last-child .chart-mark {background:var(--ai-gradient)}
+    .chart-column .unknown-mark {font-size:7px;color:var(--muted);height:10px;line-height:10px}
+    .chart-dates {display:flex;gap:5px;margin-top:4px}
+    .chart-dates span {flex:1;min-width:0;text-align:center;font-size:5.9px;line-height:8px;color:var(--secondary)}
+    .dual-ranks {display:grid;grid-template-columns:1fr 1fr;gap:14px;min-width:0}
+    .dual-ranks > .rank-block + .rank-block {border-left:1px solid var(--rule);padding-left:13px}
+    .large .rank-title {font-size:8px;line-height:10px;margin-bottom:5px;letter-spacing:.15px}
+    .large .rank-list {gap:4px}
+    .large .rank-line {font-size:8.2px;line-height:10px;margin-bottom:2px}
+    .large .rank-value {font-size:8px}
+    .large .rank-list.ai-ranking .fill {background:var(--ai-gradient)}
+    .large .footer {font-size:7px}
+    figcaption {font-size:11px;line-height:1.85;color:var(--secondary);margin:18px 0 0}
+    figcaption strong {color:var(--ink);font-weight:550}
+    .readout {display:flex;flex-wrap:wrap;gap:8px 18px;border-top:1px solid var(--rule);margin-top:30px;padding-top:17px;color:var(--secondary);font-size:11px;line-height:1.9}
+    .readout span {white-space:nowrap}
+    .readout b {font-weight:550;color:var(--ink)}
+    .disclaimer {font-size:10px;color:var(--muted);line-height:1.9;margin-top:12px;max-width:920px}
+    .empty-list {font-size:8px;line-height:14px;color:var(--secondary);padding-top:3px}
+    .sr-only {position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+    @media(min-width:1400px) {.page {padding-top:52px}}
+    @media(max-width:1000px) {
+      .gallery {grid-template-columns:.75fr 1.3fr;gap:28px 30px}
+      figure:last-child {grid-column:1 / -1;max-width:480px;width:100%;justify-self:center}
+    }
+    @media(max-width:580px) {
+      .page {padding:26px 16px 22px}
+      h1 {font-size:27px}
+      .intro {font-size:12px}
+      .toolbar {gap:14px;align-items:flex-start;margin-top:20px}
+      .controls {gap:9px}
+      .control-label {display:none}
+      .legend {font-size:10px}
+      .gallery {display:flex;flex-direction:column;gap:28px}
+      figure,figure:last-child {width:100%;max-width:430px;margin:auto}
+      .size-label {max-width:338px;margin:0 auto 14px}
+      figcaption {max-width:338px;margin:13px auto 0}
+      .readout {margin-top:25px;gap:4px 15px}
+    }
+    @media(pointer:coarse) {
+      .theme-buttons button {min-height:38px;padding-inline:12px}
+      .theme-buttons {padding:3px}
+      .scenario {min-height:44px;font-size:12px}
+    }
+    @media(prefers-reduced-motion:no-preference) {
+      .fill {transition:width .25s ease}
+      .ring-arc {transition:stroke-dashoffset .25s ease}
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="eyebrow">CLOUDFLARE ANALYTICS · 融合布局草案</div>
+    <h1>两种用量，一眼看全。</h1>
+    <p class="intro">Workers 请求量与 Workers AI Neurons 同屏展示。保留请求数的主次层级，AI 使用独立的参考额度与图形。</p>
+    <div class="toolbar">
+      <div class="controls">
+        <span class="control-label">外观</span>
+        <div class="theme-buttons" role="group" aria-label="预览外观">
+          <button type="button" data-theme-choice="dark" aria-pressed="true">深色</button>
+          <button type="button" data-theme-choice="light" aria-pressed="false">浅色</button>
+          <button type="button" data-theme-choice="system" aria-pressed="false">系统</button>
+        </div>
+        <label class="sr-only" for="scenario">示例数据状态</label>
+        <select class="scenario" id="scenario">
+          <option value="normal">日常用量</option>
+          <option value="warning">接近两项参考额度</option>
+          <option value="unknown">AI 数据未取得</option>
+          <option value="paid">Workers 付费套餐</option>
+        </select>
+      </div>
+      <div class="legend" aria-label="图形图例"><span><i></i>Workers · 请求</span><span><i class="ai-dot"></i>AI · Neurons</span></div>
+    </div>
+    <div class="gallery">
+      <figure>
+        <div class="size-label"><b>小号 · 双用量摘要</b><span>158 × 158 pt</span></div>
+        <div class="canvas" data-width="158" data-height="158">
+          <article class="widget small" aria-label="小号融合组件">
+            <header class="brand"><svg viewBox="0 0 32 22" aria-hidden="true"><path d="M8 19.5h17a6.5 6.5 0 0 0 .4-13A9.2 9.2 0 0 0 8 7a6.3 6.3 0 0 0 0 12.5Z"/></svg><span class="wordmark">CLOUDFLARE</span><span class="account">个人账号</span></header>
+            <div class="small-main">
+              <div class="metric"><div class="kicker">今日请求 · 估算</div><div class="numeral main-value" data-value="requests"></div></div>
+              <div class="donut" data-ring="workers"><svg viewBox="0 0 48 48" aria-hidden="true"><circle class="ring-track" cx="24" cy="24" r="21.5"/><circle class="ring-arc" cx="24" cy="24" r="21.5"/></svg><div class="ring-label"><span data-ring-label></span><span class="ring-caption" data-ring-caption>已用</span></div></div>
+            </div>
+            <div class="remaining-row"><span data-label="workerRemaining">估算剩余</span><b data-value="workerRemaining"></b></div>
+            <div class="ai-strip">
+              <div class="ai-strip-head"><span class="ai-name">AI Neurons</span><span class="ai-strip-value" data-value="ai"></span><span class="ai-strip-pct" data-value="aiPercent"></span></div>
+              <div class="bar ai-bar" role="progressbar" aria-label="AI 日参考额度使用率" data-progress="ai"><div class="fill"></div></div>
+            </div>
+            <footer class="footer"><span class="footer-status"><i class="status-dot"></i><span data-status="small">参考充足 · 估算</span></span><span class="footer-time">1 分钟前</span></footer>
+          </article>
+        </div>
+        <figcaption><strong>保留 Workers 主数字和圆环。</strong><br>下方增加 AI 摘要，用量和使用率同时可见。</figcaption>
+      </figure>
+      <figure>
+        <div class="size-label"><b>中号 · 保留 TOP 3</b><span>338 × 158 pt</span></div>
+        <div class="canvas" data-width="338" data-height="158">
+          <article class="widget medium" aria-label="中号融合组件">
+            <header class="brand"><svg viewBox="0 0 32 22" aria-hidden="true"><path d="M8 19.5h17a6.5 6.5 0 0 0 .4-13A9.2 9.2 0 0 0 8 7a6.3 6.3 0 0 0 0 12.5Z"/></svg><span class="wordmark">CLOUDFLARE</span><span class="account">个人账号</span><span class="plan" data-value="plan">FREE</span></header>
+            <div class="medium-main">
+              <div class="workers-summary">
+                <div class="kicker">今日请求 · 估算</div>
+                <div class="workers-value-row"><div class="numeral main-value" data-value="requests"></div><div class="donut" data-ring="workers"><svg viewBox="0 0 48 48" aria-hidden="true"><circle class="ring-track" cx="24" cy="24" r="21.5"/><circle class="ring-arc" cx="24" cy="24" r="21.5"/></svg><div class="ring-label"><span data-ring-label></span><span class="ring-caption" data-ring-caption>已用</span></div></div></div>
+                <div class="remaining-row"><span data-label="workerRemaining">估算剩余</span><b data-value="workerRemaining"></b></div>
+              </div>
+              <div class="rank-block"><div class="rank-title">今日 WORKER · TOP 3</div><div class="rank-list" data-ranking="workers"></div></div>
+            </div>
+            <div class="ai-strip">
+              <div class="ai-strip-head"><span class="ai-name">WORKERS AI</span><span class="ai-strip-value" data-value="ai"></span><span class="ai-strip-unit">N</span><span class="ai-strip-pct" data-value="aiPercent"></span><span class="ai-strip-remaining">参考余 <span data-value="aiRemaining"></span> N</span></div>
+              <div class="bar ai-bar" role="progressbar" aria-label="AI 日参考额度使用率" data-progress="ai"><div class="fill"></div></div>
+            </div>
+            <footer class="footer"><span class="footer-status"><i class="status-dot"></i><span data-status="medium">两项参考充足 · Analytics 估算</span></span><span class="footer-time">1 分钟前</span></footer>
+          </article>
+        </div>
+        <figcaption><strong>右侧继续保留 Worker 排行。</strong><br>圆环与主数字并排，底部整行留给 AI 用量、参考余量和进度。</figcaption>
+      </figure>
+      <figure>
+        <div class="size-label"><b>大号 · 完整融合仪表盘</b><span>338 × 354 pt</span></div>
+        <div class="canvas" data-width="338" data-height="354">
+          <article class="widget large" aria-label="大号融合组件">
+            <header class="brand"><svg viewBox="0 0 32 22" aria-hidden="true"><path d="M8 19.5h17a6.5 6.5 0 0 0 .4-13A9.2 9.2 0 0 0 8 7a6.3 6.3 0 0 0 0 12.5Z"/></svg><span class="wordmark">CLOUDFLARE</span><span class="account">个人账号</span><span class="plan" data-value="plan">FREE</span></header>
+            <div class="dual-summary">
+              <div class="dual-cell">
+                <div class="dual-label">WORKERS · 今日请求</div>
+                <div class="dual-value-row"><div class="numeral dual-value" data-value="requests"></div><div class="donut" data-ring="workers"><svg viewBox="0 0 48 48" aria-hidden="true"><circle class="ring-track" cx="24" cy="24" r="21.5"/><circle class="ring-arc" cx="24" cy="24" r="21.5"/></svg><div class="ring-label"><span data-ring-label></span><span class="ring-caption" data-ring-caption>已用</span></div></div></div>
+                <div class="dual-remaining"><span data-label="workerRemaining">估算剩余</span> <b data-value="workerRemaining"></b></div>
+                <div class="dual-allowance" data-value="workerAllowance"></div>
+              </div>
+              <div class="dual-cell ai-cell">
+                <div class="dual-label">WORKERS AI · NEURONS</div>
+                <div class="dual-value-row"><div class="numeral dual-value" data-value="ai"></div><div class="donut ai-ring" data-ring="ai"><svg viewBox="0 0 48 48" aria-hidden="true"><circle class="ring-track" cx="24" cy="24" r="21.5"/><circle class="ring-arc" cx="24" cy="24" r="21.5"/></svg><div class="ring-label"><span data-ring-label></span><span class="ring-caption" data-ring-caption>参考量</span></div></div></div>
+                <div class="dual-remaining">参考剩余 <b data-value="aiRemaining"></b> N</div>
+                <div class="dual-allowance">日免费量参考 10,000 N</div>
+              </div>
+            </div>
+            <div class="health"><span>Workers 错误 <b data-value="errors">0</b></span><span>错误率 <b data-value="errorRate">0.0%</b></span><span class="reset">UTC 重置 17:28:00</span></div>
+            <div class="trend-panel">
+              <div class="section-title">近 7 个 UTC 日 · 独立刻度</div>
+              <div class="trend-pair">
+                <div class="mini-chart"><div class="chart-heading"><strong>Workers · 请求</strong><span data-peak="workers"></span></div><div class="chart-body" data-chart="workers"></div><div class="chart-dates" data-chart-dates></div></div>
+                <div class="mini-chart ai-chart"><div class="chart-heading"><strong>AI · Neurons</strong><span data-peak="ai"></span></div><div class="chart-body" data-chart="ai"></div><div class="chart-dates" data-chart-dates></div></div>
+              </div>
+            </div>
+            <div class="dual-ranks">
+              <div class="rank-block"><div class="rank-title">今日 Worker · TOP 3</div><div class="rank-list" data-ranking="workers"></div></div>
+              <div class="rank-block"><div class="rank-title">今日 AI 模型 · TOP 3</div><div class="rank-list ai-ranking" data-ranking="ai"></div></div>
+            </div>
+            <footer class="footer"><span class="footer-status"><i class="status-dot"></i><span data-status="large">Analytics 估算 · 两项参考充足</span></span><span class="footer-time">UTC 06:32 更新 · 1 分钟前</span></footer>
+          </article>
+        </div>
+        <figcaption><strong>两套摘要、两张趋势、两组排名。</strong><br>请求数与 Neurons 分开标注和缩放，随时能看清是哪一项在消耗。</figcaption>
+      </figure>
+    </div>
+    <div class="readout" aria-live="polite"><span>今日 Workers：<b data-value="requests"></b> 请求</span><span>今日 AI：<b data-value="aiExact"></b> Neurons</span><span>展示方案：<b>同屏融合，分别统计</b></span></div>
+    <p class="disclaimer">布局概念预览 · 所有数值均为示例，不连接 Cloudflare API。按现有常用 Widget 点数尺寸排版；不是 Scripting 原生渲染或 iPhone 截图。日请求额度示例为已确认的 Workers Free 100,000；AI 10,000 Neurons 仅作为日免费量参考，不能视为官方实时余额。浏览器切换外观和示例状态仅用于检查设计，手机组件仍由现有脚本运行。本次预览没有修改或发布新的脚本安装包。</p>
+  </main>
+  <script>
+    (function () {
+      "use strict";
+      const root = document.documentElement;
+      const scenarioControl = document.getElementById("scenario");
+      const media = window.matchMedia("(prefers-color-scheme: dark)");
+      let themeChoice = "dark";
+      const dates = ["10","11","12","13","14","15","16"];
+      const scenarios = {
+        normal: {requests:3511,neurons:2750.125,limit:100000,errors:0,workers:[["api-gateway",1880],["image-proxy",973],["edge-cache",658]],models:[["meta/llama-3.3",1620.125],["qwen/qwen3-30b",830],["baai/bge-m3",300]]},
+        warning: {requests:95340,neurons:9740.5,limit:100000,errors:23,workers:[["api-gateway",57000],["image-proxy",25340],["edge-cache",13000]],models:[["meta/llama-3.3",6240.5],["qwen/qwen3-30b",2300],["baai/bge-m3",1200]]},
+        unknown: {requests:3511,neurons:null,limit:100000,errors:0,workers:[["api-gateway",1880],["image-proxy",973],["edge-cache",658]],models:[]},
+        paid: {requests:3511,neurons:2750.125,limit:null,errors:0,workers:[["api-gateway",1880],["image-proxy",973],["edge-cache",658]],models:[["meta/llama-3.3",1620.125],["qwen/qwen3-30b",830],["baai/bge-m3",300]]}
+      };
+      function number(value,decimals) {
+        return value === null ? "—" : value.toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:decimals || 0});
+      }
+      function percent(ratio) {return ratio === null ? "—" : (ratio * 100).toFixed(1) + "%"}
+      function clamp(ratio) {return Math.min(1,Math.max(0,ratio || 0))}
+      function escape(text) {return String(text).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;")}
+      function level(ratio) {return ratio === null ? "unknown" : ratio >= .95 ? "critical" : ratio >= .8 ? "warning" : "normal"}
+      function ringTone(kind,ratio) {const severity=level(ratio);return severity === "critical" ? "var(--critical)" : severity === "warning" ? "var(--warn)" : kind === "ai" ? "var(--ai-fill)" : "var(--orange-strong)"}
+      function history(kind,data) {
+        if (kind === "ai") return data.neurons === null ? [null,null,null,null,null,null,null] : [830.5,1150.125,970,1620.5,2040,2410,data.neurons];
+        return [1840,2160,1720,2680,3040,2870,data.requests];
+      }
+      function render() {
+        const data = scenarios[scenarioControl.value];
+        const ratios = {workers:data.limit === null ? null : data.requests / data.limit,ai:data.neurons === null ? null : data.neurons / 10000};
+        const values = {requests:number(data.requests),workerRemaining:data.limit === null ? "按量计费" : number(Math.max(0,data.limit-data.requests)),ai:number(data.neurons,1),aiExact:number(data.neurons,3),aiPercent:percent(ratios.ai),aiRemaining:number(data.neurons === null ? null : Math.max(0,10000-data.neurons),1),plan:data.limit === null ? "PAID" : "FREE",workerAllowance:data.limit === null ? "付费套餐 · 无免费日额度" : "Free 日额度 100,000",errors:number(data.errors),errorRate:percent(data.errors/data.requests)};
+        document.querySelectorAll("[data-value]").forEach(function (node) {node.textContent=values[node.dataset.value]});
+        document.querySelectorAll('[data-label="workerRemaining"]').forEach(function (node) {node.textContent=data.limit === null ? "当前套餐" : "估算剩余"});
+        document.querySelectorAll("[data-ring]").forEach(function (node) {
+          const kind=node.dataset.ring,ratio=ratios[kind],arc=node.querySelector(".ring-arc"),circumference=2*Math.PI*21.5;
+          node.classList.toggle("unknown",ratio === null);
+          arc.style.strokeDasharray=String(circumference);
+          arc.style.strokeDashoffset=String(circumference*(1-clamp(ratio)));
+          arc.style.opacity=ratio === null || ratio === 0 ? "0" : "1";
+          arc.style.stroke=ringTone(kind,ratio);
+          arc.style.strokeLinecap=ratio !== null && ratio < .02 ? "butt" : "round";
+          node.querySelector("[data-ring-label]").textContent=ratio === null && kind === "workers" ? "Paid" : percent(ratio);
+          node.querySelector("[data-ring-caption]").textContent=ratio === null ? kind === "workers" ? "按量" : "未取得" : kind === "workers" ? "已用" : "参考量";
+          node.setAttribute("role","img");
+          node.setAttribute("aria-label",(kind === "workers" ? "Workers 使用率 " : "AI 参考使用率 ") + (ratio === null ? "未知或不适用" : percent(ratio)));
+        });
+        document.querySelectorAll("[data-progress]").forEach(function (node) {
+          const ratio=ratios[node.dataset.progress],fill=node.querySelector(".fill");
+          fill.style.width=String(clamp(ratio)*100)+"%";
+          const severity=level(ratio);
+          fill.style.background=severity === "critical" ? "var(--critical)" : severity === "warning" ? "var(--warn)" : "var(--ai-gradient)";
+          if (ratio === null) {node.removeAttribute("aria-valuenow");node.setAttribute("aria-valuetext","未取得数据")}
+          else {node.setAttribute("aria-valuenow",String(ratio*100));node.setAttribute("aria-valuetext",percent(ratio))}
+          node.setAttribute("aria-valuemin","0");node.setAttribute("aria-valuemax","100");
+        });
+        document.querySelectorAll("[data-ranking]").forEach(function (node) {
+          const kind=node.dataset.ranking,items=kind === "ai" ? data.models : data.workers,total=kind === "ai" ? data.neurons : data.requests;
+          node.innerHTML=items.length ? items.map(function (item) {
+            const share=total > 0 ? clamp(item[1]/total) : 0;
+            return '<div class="rank-row"><div class="rank-line"><span class="rank-name" title="'+escape(item[0])+'">'+escape(item[0])+'</span><span class="rank-value">'+number(item[1],kind === "ai" ? 1 : 0)+'</span></div><div class="bar"><div class="fill" style="width:'+(share*100)+'%"></div></div></div>';
+          }).join("") : '<div class="empty-list">尚未取得模型数据<br>保留 Workers 显示</div>';
+        });
+        document.querySelectorAll("[data-chart]").forEach(function (node) {
+          const kind=node.dataset.chart,series=history(kind,data),known=series.filter(function(v){return v !== null}),maximum=known.length ? Math.max.apply(null,known) : null;
+          node.innerHTML=series.map(function (value,index) {
+            return '<div class="chart-column" role="img" aria-label="10/'+dates[index]+'：'+(value === null ? "未取得" : number(value,3))+(kind === "ai" ? " Neurons" : " 请求")+'">'+(value === null ? '<span class="unknown-mark">—</span>' : value > 0 ? '<div class="chart-mark" style="height:'+(41*value/Math.max(1,maximum))+'px"></div>' : "")+'</div>';
+          }).join("");
+          document.querySelector('[data-peak="'+kind+'"]').textContent="峰值 "+number(maximum,kind === "ai" ? 1 : 0);
+        });
+        document.querySelectorAll("[data-chart-dates]").forEach(function (node) {node.innerHTML=dates.map(function(date){return "<span>"+date+"</span>"}).join("")});
+        const worst=level(Math.max(ratios.workers || 0,ratios.ai || 0));
+        const statuses=data.neurons === null ? {small:"AI 待更新 · 估算",medium:"AI 未取得 · Workers 已缓存",large:"AI 未取得 · Workers 已缓存"} : worst === "critical" ? {small:"用量 ≥95% · 估算",medium:"Workers / AI ≥95% · 估算",large:"两项参考量接近用尽 · 估算"} : {small:"用量估算 · UTC 日",medium:data.limit === null ? "Workers 付费 · AI 免费量参考" : "两项参考充足 · Analytics 估算",large:data.limit === null ? "Workers 付费 · AI 免费量参考" : "Analytics 估算 · 两项参考充足"};
+        document.querySelectorAll("[data-status]").forEach(function (node) {node.textContent=statuses[node.dataset.status];node.parentElement.style.color=data.neurons === null ? "var(--warn)" : worst === "critical" ? "var(--critical)" : "var(--secondary)"});
+        root.dataset.scenario=scenarioControl.value;
+        requestAnimationFrame(resize);
+      }
+      function resize() {
+        document.querySelectorAll(".canvas").forEach(function (node) {
+          const width=Number(node.dataset.width),height=Number(node.dataset.height),available=node.parentElement.clientWidth;
+          const preferred=window.innerWidth > 1000 ? 1.13 : window.innerWidth > 580 ? 1.1 : 1;
+          const scale=Math.min(preferred,available/width);
+          node.style.width=String(width*scale)+"px";node.style.height=String(height*scale)+"px";
+          node.firstElementChild.style.transform="scale("+scale+")";
+        });
+      }
+      function setTheme(choice) {
+        themeChoice=choice;root.dataset.theme=choice === "system" ? media.matches ? "dark" : "light" : choice;
+        document.querySelectorAll("[data-theme-choice]").forEach(function(button){button.setAttribute("aria-pressed",String(button.dataset.themeChoice === choice))});
+      }
+      document.querySelectorAll("[data-theme-choice]").forEach(function (button) {button.addEventListener("click",function(){setTheme(button.dataset.themeChoice)})});
+      scenarioControl.addEventListener("change",render);
+      window.addEventListener("resize",resize);
+      media.addEventListener("change",function(){if(themeChoice === "system")setTheme("system")});
+      window.FusionPreview={setTheme:setTheme,setScenario:function(name){if(!scenarios[name])throw new Error("Unknown demo scenario");scenarioControl.value=name;render()},getScenario:function(){return scenarioControl.value}};
+      const initial = new URLSearchParams(window.location.search);
+      if (scenarios[initial.get("scenario")]) scenarioControl.value=initial.get("scenario");
+      const initialTheme=["dark","light","system"].includes(initial.get("theme")) ? initial.get("theme") : "dark";
+      render();setTheme(initialTheme);
+      document.fonts.ready.then(resize);
+    })();
+  </script>
+</body>
+</html>
