@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="dark">
+<html lang="zh-CN" data-theme="dark" data-layout="number-fit-v2">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -28,6 +28,7 @@
       --ai-gradient:linear-gradient(90deg,#526fa8,#8fa9d6);
       --shadow:0 16px 34px #20334c10,0 2px 5px #20334c08;
     }
+    html {-webkit-text-size-adjust:100%;text-size-adjust:100%}
     * {box-sizing:border-box}
     body {margin:0;background:radial-gradient(ellipse at 10% 0,var(--page-glow),transparent 55%),var(--page);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
     button,select {font:inherit}
@@ -68,8 +69,8 @@
     .plan {flex:none;font-size:6.8px;letter-spacing:.2px;padding:2px 4px;border-radius:4px;background:var(--panel);color:var(--secondary);font-weight:650}
     .kicker {font-size:8.5px;line-height:11px;color:var(--secondary);white-space:nowrap}
     .numeral {font-weight:750;letter-spacing:.3px;line-height:1.12;font-family:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    .main-value {font-size:28px;white-space:nowrap}
-    .small-main {display:flex;align-items:flex-end;justify-content:space-between;gap:7px;min-height:43px}
+    .main-value {font-size:28px;white-space:nowrap;min-width:0}
+    .small-main {display:grid;grid-template-columns:minmax(0,1fr) 36px;align-items:end;gap:10px;min-height:43px}
     .small-main .metric {min-width:0}
     .small-main .main-value {margin-top:2px}
     .remaining-row {display:flex;align-items:center;justify-content:space-between;gap:5px;font-size:8px;line-height:11px;color:var(--secondary);white-space:nowrap}
@@ -86,7 +87,7 @@
     .ai-strip {flex:none;background:var(--panel);border-radius:7px;padding:5px 6px;min-width:0}
     .ai-strip-head {display:flex;align-items:baseline;gap:5px;white-space:nowrap;min-width:0}
     .ai-name {font-weight:650;color:var(--ai);font-size:7.5px;letter-spacing:.2px;flex:none}
-    .ai-strip-value {font-size:11px;font-weight:700;letter-spacing:.1px;color:var(--ink);white-space:nowrap}
+    .ai-strip-value {font-size:11px;font-weight:700;letter-spacing:.1px;color:var(--ink);white-space:nowrap;min-width:0;flex:0 1 auto}
     .ai-strip-pct {margin-left:auto;font-size:7.6px;color:var(--secondary);white-space:nowrap}
     .bar {position:relative;background:var(--track);height:3px;border-radius:3px;overflow:hidden;flex:none}
     .bar .fill {height:100%;width:0;border-radius:inherit;background:var(--orange-gradient)}
@@ -98,7 +99,7 @@
     .footer-time {flex:none;color:var(--secondary)}
     .medium-main {display:grid;grid-template-columns:.94fr 1.06fr;gap:12px;min-width:0;align-items:start}
     .workers-summary {min-width:0}
-    .workers-value-row {display:flex;align-items:center;justify-content:space-between;gap:5px;margin:1px 0 2px}
+    .workers-value-row {display:grid;grid-template-columns:minmax(0,1fr) 33px;align-items:center;gap:8px;margin:1px 0 2px}
     .workers-value-row .donut {width:33px;height:33px}
     .medium .main-value {font-size:28px}
     .medium .remaining-row {font-size:7.8px}
@@ -121,7 +122,7 @@
     .dual-cell {min-width:0}
     .dual-cell + .dual-cell {border-left:1px solid var(--rule);padding-left:13px}
     .dual-label {font-size:8px;font-weight:650;letter-spacing:.6px;line-height:11px;color:var(--secondary)}
-    .dual-value-row {display:flex;align-items:center;justify-content:space-between;gap:4px;margin:3px 0 4px;min-width:0}
+    .dual-value-row {display:grid;grid-template-columns:minmax(0,1fr) 35px;align-items:center;gap:7px;margin:3px 0 4px;min-width:0}
     .dual-value {font-size:24px;white-space:nowrap;min-width:0}
     .dual-cell.ai-cell .dual-value {font-size:21px;letter-spacing:0}
     .large .donut {width:35px;height:35px}
@@ -314,7 +315,11 @@
       function number(value,decimals) {
         return value === null ? "—" : value.toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:decimals || 0});
       }
-      function percent(ratio) {return ratio === null ? "—" : (ratio * 100).toFixed(1) + "%"}
+      function percent(ratio) {
+        if (ratio === null) return "—";
+        const value=ratio*100;
+        return value > 0 && value < .1 ? value < .001 ? "<0.001%" : value.toFixed(3)+"%" : value.toFixed(1)+"%";
+      }
       function clamp(ratio) {return Math.min(1,Math.max(0,ratio || 0))}
       function escape(text) {return String(text).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;")}
       function level(ratio) {return ratio === null ? "unknown" : ratio >= .95 ? "critical" : ratio >= .8 ? "warning" : "normal"}
@@ -379,6 +384,31 @@
           const scale=Math.min(preferred,available/width);
           node.style.width=String(width*scale)+"px";node.style.height=String(height*scale)+"px";
           node.firstElementChild.style.transform="scale("+scale+")";
+        });
+        fitNumbers();
+      }
+      function fitNumbers() {
+        // Reserve the ring's column first, then measure the actual rendered text.
+        // Container bounds alone miss glyphs overflowing their assigned column.
+        document.querySelectorAll(".main-value,.dual-value,.ai-strip-value").forEach(function (node) {
+          node.style.removeProperty("font-size");
+          node.style.removeProperty("line-height");
+          const base=getComputedStyle(node),size=parseFloat(base.fontSize);
+          // Keep the original line box so fitting a longer value cannot move nearby rows.
+          node.style.lineHeight=base.lineHeight;
+          const card=node.closest(".widget"),scale=card.getBoundingClientRect().width/card.offsetWidth;
+          const available=node.getBoundingClientRect().width-(node.matches(".ai-strip-value") ? 0 : 2*scale);
+          if (available <= 0) return;
+          const range=document.createRange();
+          range.selectNodeContents(node);
+          let width=range.getBoundingClientRect().width;
+          let fitted=size;
+          // A second measurement accounts for letter spacing that does not scale with font size.
+          for (let pass=0;pass<3 && width>available+.1;pass++) {
+            fitted=Math.max(size*.5,Math.floor(fitted*available/width*100)/100);
+            node.style.fontSize=String(fitted)+"px";
+            width=range.getBoundingClientRect().width;
+          }
         });
       }
       function setTheme(choice) {

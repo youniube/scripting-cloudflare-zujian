@@ -48,6 +48,16 @@
 - 前台手动刷新可在成功获取今日后立即补取缺失历史，重复刷新已有日期、Widget、限流和失败间隔仍受保护。
 - 138 / 148 / 158pt 小号视图树的品牌文字有单行、缩放和固定宽度约束；长账号名可压缩。
 
+## 融合布局 HTML 预览的字宽修复
+
+用户在 iPhone 截图中发现：选择“接近两项参考额度”后，小号 95,340 与圆环重叠。先前的预览检查只比较容器边界，无法捕获文字字形超出已收缩容器的情况；不能据此保证 Safari 的实际文字不重叠。
+
+HTML 现在用独立 Grid 列固定圆环宽度，小号、中号、大号分别保留 10 / 8 / 7pt 的列间距；对实际绘制的数字使用 [Range.getBoundingClientRect](https://developer.mozilla.org/en-US/docs/Web/API/Range/getBoundingClientRect) 测量，仅在宽度不足时适配字号，并保留原来的行框。常规 3,511 保持 28px；没有通过隐藏溢出或省略数字掩盖问题。另设置标准与 WebKit 的 [text-size-adjust](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/text-size-adjust) 为 100%，使移动预览遵循设计字号。达到 95% 时继续保留原有红色提醒。
+
+新增可在预览页浏览器环境执行的 tools/check-fusion-preview.js。它检查文字 Range 的实际边界和文字到圆环的间距，覆盖默认字体与更宽的 Courier New/加大字距、深浅色、四种示例状态及 100,000 请求边界。320 / 390 / 736 / 1280px 四种页面宽度共 80 组检查通过；正常状态字号、AI 未知状态、页脚边界和非零错误率精度一并核验。宽字体复现中，修复前小号文字侵入圆环约 11.8pt；修复后空隙约 12pt。
+
+这些是桌面 Chrome 的浏览器布局与字体压力检查，开发端未连接 iPhone Safari，不声称完成 Safari 真机测试。本次只更新在线 HTML 预览及对应 PNG，Scripting 1.2.0 的源码、API、缓存与 ZIP 安装包保持原状。
+
 ## 1.2.0 Workers AI
 
 增加 17 项有实际行为覆盖的检查：动态 Schema/Settings、缺少 Neurons 的字段省略、账号数据集未开放、分页能力不足、独立总量与分页模型排名、小数精度、UTC 分段边界、空记录与真实零、异常及查询预算、保留期、Workers/AI 缓存隔离、Token 留空编辑与删除、并发请求抑制、网络失败与限流回退、历史补取、跨日缓存、参数兼容、阈值、三尺寸真实数值绘图、App AI 菜单与 effect、原生预览配置、真实 `widget.tsx` 入口分流。网络/Keychain/Storage/原生 UI 用模拟对象，不把入口逻辑执行说成 iOS 运行。
